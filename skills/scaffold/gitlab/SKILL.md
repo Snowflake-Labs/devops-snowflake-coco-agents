@@ -140,13 +140,18 @@ Collect all four values before Create Project.
 
    Flag mapping: Private → `--private`, Internal → `--internal`, Public → `--public`.
 
-3. **Snowflake prefix** (`PREFIX`) — ask:
+3. **Snowflake prefix** (`PREFIX`) — detect from current Snowflake user:
+   ```bash
+   snow sql -q "SELECT CURRENT_USER()" --format json \
+     | python3 -c "import sys,json; u=list(json.load(sys.stdin)[0].values())[0]; print(u.split('@')[0].upper()[:10])"
+   ```
+   Then ask:
    ```
    ask_user_question:
      header: "Prefix"
      question: "Snowflake resource prefix? All objects will be named PREFIX_GITLAB_COCO_AGENT_*"
      type: text
-     defaultValue: "DEMO"
+     defaultValue: "<detected-snowflake-user>"
    ```
 
 4. **Snowflake account** (`SNOWFLAKE_ACCOUNT`) — check `$SNOWFLAKE_ACCOUNT` env first; if unset, ask.
@@ -195,7 +200,61 @@ ask_user_question:
     - label: "Abort"
 ```
 
-If "Use the existing project": clone it and skip to post-step verification.
+If "Use the existing project":
+```bash
+glab repo clone "$PROJECT_PATH"
+```
+
+Then run state detection to find where to resume:
+```bash
+echo "=== Detecting completed steps ==="
+# Step 2: Pipelines state
+S2=$(glab api "projects/$ENCODED_PATH" --jq .builds_access_level 2>/dev/null)
+# Step 3: OIDC user exists?
+S3=$(snow sql -q "SHOW USERS LIKE '${PREFIX}_GITLAB_COCO_AGENT_USER'" \
+       --format json 2>/dev/null \
+       | python3 -c "import sys,json; print('done' if json.load(sys.stdin) else '')" 2>/dev/null)
+# Step 4: CI/CD variables set?
+S4=$(glab variable list 2>/dev/null | grep -c "SNOWFLAKE_ACCOUNT" || echo 0)
+# Runner: any local runner online?
+RUNNER=$(glab api "projects/$ENCODED_PATH/runners" \
+           --jq '[.[]|select(.description=="local-mac")]|length' 2>/dev/null || echo 0)
+```
+
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present the state summary:
+
+```
+Existing project detected — here's what's already done:
+
+  ✓  Create Project       $PROJECT_PATH cloned locally
+  [$S2 == disabled → ✓ | else → ✗]  Hold Before Go-Live  Pipelines: $S2
+  [$S3 == done     → ✓ | else → ✗]  Connect Snowflake    OIDC user: $S3
+  [$S4 >= 1        → ✓ | else → ✗]  Configure            Variables set: $S4
+  [$RUNNER > 0     → ✓ | else → —]  Runner               Online: $RUNNER
+```
+
+Call `exit_plan_mode`. Then ask:
+```
+ask_user_question:
+  header: "Resume"
+  question: "Detected state shown above. Where would you like to start?"
+  options:
+    - label: "Resume from first incomplete step"
+      description: "Skip what's already done and continue from where you left off"
+    - label: "Start from the beginning"
+      description: "Re-run all steps (idempotent — safe to re-run)"
+    - label: "Stop here"
+```
+
+If "Resume from first incomplete step":
+- If S2 is not `disabled` → jump to Hold Before Go-Live
+- Else if S3 is not `done` → jump to Connect Snowflake
+- Else if S4 < 1 → jump to Configure
+- Else → jump to Watch the Loop (all setup steps done)
+
+If "Start from the beginning": proceed to Hold Before Go-Live (step 1 already done).
+
+
 
 ---
 
@@ -234,6 +293,9 @@ glab project create "$PROJECT_NAME" \
   --$PROJECT_VISIBILITY
 
 glab repo clone "$PROJECT_PATH"
+
+# Disable pipelines immediately — prevents spurious runs during setup
+glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 ```
 
 **Post-step verification:**
@@ -278,50 +340,46 @@ If either fails:
 ⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
-> Running pipelines before auth is configured produces failed OIDC exchanges
-> and confusing error messages. Disabling now means the first real run will be
-> a clean green one.
+> Pipelines were disabled immediately when the project was created to prevent
+> spurious pipeline failures during setup. This step confirms that state
+> and ensures you don't accidentally re-enable pipelines too early.
 
 **What we'll do**
 ```
-Disables:  CI/CD pipelines on $PROJECT_PATH
-Effect:    No jobs fire until Watch the Loop re-enables them
+Verifies:  CI/CD pipelines disabled on $PROJECT_PATH
+Expected:  builds_access_level = "disabled"
 ```
 
 Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Hold Before Go-Live"
-  question: "Disable CI/CD pipelines on $PROJECT_PATH until setup is complete?"
+  question: "Confirm pipelines are disabled on $PROJECT_PATH before proceeding?"
   options:
-    - label: "Yes, disable pipelines"
-    - label: "Replay this step"
+    - label: "Yes, verify and continue"
     - label: "Stop here"
 ```
 
-Execute:
+**Verify:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+```
+Expected: `"disabled"`. If not, re-disable:
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 ```
 
-**Post-step verification:**
-```bash
-glab api "projects/$ENCODED_PATH" --jq .builds_access_level
-```
-Expected: `"disabled"`
-
 ### What we did
-- CI/CD pipelines disabled on `$PROJECT_PATH`
-- No jobs will fire until setup is complete
+- Confirmed CI/CD pipelines are disabled on `$PROJECT_PATH`
+- No jobs will fire until Watch the Loop re-enables them
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
   header: "Hold Before Go-Live done"
-  question: "Pipelines disabled. Continue to Connect Snowflake?"
+  question: "Pipelines confirmed disabled. Continue to Connect Snowflake?"
   options:
     - label: "Yes, continue"
-    - label: "Replay this step"
     - label: "Stop here"
 ```
 

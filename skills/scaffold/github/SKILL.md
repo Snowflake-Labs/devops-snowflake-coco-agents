@@ -149,13 +149,18 @@ Collect all three values before Create Project. Auto-detect where possible.
    ```
    Store as `$REPO_VISIBILITY`. Flag mapping: Private → `--private`, Internal → `--internal`, Public → `--public`.
 
-3. **Snowflake prefix** (`PREFIX`) — ask:
+3. **Snowflake prefix** (`PREFIX`) — detect from current Snowflake user:
+   ```bash
+   snow sql -q "SELECT CURRENT_USER()" --format json \
+     | python3 -c "import sys,json; u=list(json.load(sys.stdin)[0].values())[0]; print(u.split('@')[0].upper()[:10])"
+   ```
+   Then ask:
    ```
    ask_user_question:
      header: "Prefix"
      question: "Snowflake resource prefix? All objects will be named PREFIX_GITHUB_COCO_AGENT_*"
      type: text
-     defaultValue: "DEMO"
+     defaultValue: "<detected-snowflake-user>"
    ```
 
 4. **Snowflake account** (`SNOWFLAKE_ACCOUNT`) — check `$SNOWFLAKE_ACCOUNT` env first.
@@ -196,7 +201,60 @@ ask_user_question:
     - label: "Abort"
 ```
 
-If "Use the existing repo": clone it and skip to the post-step verification below.
+If "Use the existing repo":
+```bash
+git clone "https://github.com/$REPO_PATH.git" "$REPO_NAME"
+```
+
+Then run state detection to find where to resume:
+```bash
+echo "=== Detecting completed steps ==="
+# Step 2: Actions state
+S2=$(gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled 2>/dev/null)
+# Step 3: OIDC user exists?
+S3=$(snow sql -q "SHOW USERS LIKE '${PREFIX}_GITHUB_COCO_AGENT_USER'" \
+       --format json 2>/dev/null \
+       | python3 -c "import sys,json; print('done' if json.load(sys.stdin) else '')" 2>/dev/null)
+# Step 4: Secrets set?
+S4=$(gh secret list --repo "$REPO_PATH" 2>/dev/null | grep -c "SNOWFLAKE_ACCOUNT" || echo 0)
+# Runner: any local runner online?
+RUNNER=$(gh api "repos/$REPO_PATH/actions/runners" --jq '.runners|length' 2>/dev/null || echo 0)
+```
+
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present the state summary:
+
+```
+Existing repo detected — here's what's already done:
+
+  ✓  Create Project       $REPO_PATH cloned locally
+  [$S2 == false → ✓ | else → ✗]  Hold Before Go-Live   Actions enabled: $S2
+  [$S3 == done  → ✓ | else → ✗]  Connect Snowflake     OIDC user: $S3
+  [$S4 >= 1     → ✓ | else → ✗]  Configure             Secrets set: $S4
+  [$RUNNER > 0  → ✓ | else → —]  Runner                Online: $RUNNER
+```
+
+Call `exit_plan_mode`. Then ask:
+```
+ask_user_question:
+  header: "Resume"
+  question: "Detected state shown above. Where would you like to start?"
+  options:
+    - label: "Resume from first incomplete step"
+      description: "Skip what's already done and continue from where you left off"
+    - label: "Start from the beginning"
+      description: "Re-run all steps (idempotent — safe to re-run)"
+    - label: "Stop here"
+```
+
+If "Resume from first incomplete step":
+- If S2 is not `false` → jump to Hold Before Go-Live
+- Else if S3 is not `done` → jump to Connect Snowflake
+- Else if S4 < 1 → jump to Configure
+- Else → jump to Watch the Loop (all setup steps done)
+
+If "Start from the beginning": proceed to Hold Before Go-Live (step 1 already done).
+
+
 
 ---
 
@@ -234,6 +292,13 @@ gh repo create "$REPO_PATH" \
   --template https://github.com/Snowflake-Labs/github-coco-agent \
   --$REPO_VISIBILITY \
   --clone
+
+# Disable Actions immediately — prevents spurious workflow runs during setup
+gh api "repos/$REPO_PATH/actions/permissions" \
+  -X PUT \
+  --input - <<'EOF'
+{"enabled": false}
+EOF
 ```
 
 **Post-step verification:**
@@ -278,54 +343,48 @@ If either fails:
 ⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
-> Running workflows before auth is configured produces failed OIDC exchanges
-> and confusing error messages in the logs. Disabling Actions now means the
-> first real run will be a clean green one.
+> Actions were disabled immediately when the repo was created to prevent
+> spurious workflow failures during setup. This step confirms that state
+> and ensures you don't accidentally re-enable Actions too early.
 
 **What we'll do**
 ```
-Disables:  GitHub Actions on $REPO_PATH
-Effect:    No workflows trigger until Watch the Loop re-enables them
+Verifies:  GitHub Actions disabled on $REPO_PATH
+Expected:  enabled = false
 ```
 
 Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Hold Before Go-Live"
-  question: "Disable Actions on $REPO_PATH until setup is complete?"
+  question: "Confirm Actions are disabled on $REPO_PATH before proceeding?"
   options:
-    - label: "Yes, disable Actions"
-    - label: "Replay this step"
+    - label: "Yes, verify and continue"
     - label: "Stop here"
 ```
 
-Execute:
+**Verify:**
 ```bash
-gh api "repos/$REPO_PATH/actions/permissions" \
-  -X PUT \
-  --input - <<'EOF'
+gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
+```
+Expected: `false`. If `true`, Actions were re-enabled somehow — re-disable:
+```bash
+gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<'EOF'
 {"enabled": false}
 EOF
 ```
 
-**Post-step verification:**
-```bash
-gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
-```
-Expected: `false`
-
 ### What we did
-- GitHub Actions disabled on `$REPO_PATH`
-- No workflows will fire until setup is complete
+- Confirmed GitHub Actions are disabled on `$REPO_PATH`
+- No workflows will fire until Watch the Loop re-enables them
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
   header: "Hold Before Go-Live done"
-  question: "Actions disabled. Continue to Connect Snowflake?"
+  question: "Actions confirmed disabled. Continue to Connect Snowflake?"
   options:
     - label: "Yes, continue"
-    - label: "Replay this step"
     - label: "Stop here"
 ```
 
