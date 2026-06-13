@@ -14,6 +14,17 @@ description: >
 ⚠️ MANDATORY: Execute beats 1–6 in order. Never skip or reorder.
 Each beat builds on the previous — jumping ahead leaves the repo in a broken state.
 
+## Mode Behaviour Reference
+
+`$SKILL_MODE` is set at the start (default: guided).
+
+- **guided** — show "Why this matters" before each plan preview
+- **standard** — skip "Why this matters"; show plan preview and confirm as normal
+
+Beat-by-beat confirm gates fire in both modes.
+Beat 6 teardown always shows a final confirm regardless of mode.
+"What we did" is always shown in both modes.
+
 ## Forbidden Actions
 
 ⚠️ FORBIDDEN:
@@ -57,6 +68,24 @@ ask_user_question:
     - label: "Abort"
 ```
 
+## Run Mode
+
+Ask once, before collecting any inputs:
+
+```
+ask_user_question:
+  header: "Run mode"
+  question: "How would you like to run the scaffold?"
+  defaultAnswer: "Guided — explanations + beat-by-beat confirm"
+  options:
+    - label: "Guided — explanations + beat-by-beat confirm"
+      description: "Explains each concept before acting. Good for first-timers."
+    - label: "Standard — beat-by-beat confirm, skip explanations"
+      description: "Shows what will happen and asks before each beat."
+```
+
+Set `$SKILL_MODE = guided` or `$SKILL_MODE = standard` from the answer.
+
 ## Stopping Points
 
 Collect all three values before Beat 1. Auto-detect where possible.
@@ -65,13 +94,21 @@ Collect all three values before Beat 1. Auto-detect where possible.
    ```bash
    gh api user --jq .login
    ```
+   You are a techy petname generator for a git repository. Generate a name using
+   the pattern `<adjective>-<noun>` where adjective is a personality adjective
+   (fuzzy, blazing, sleepy, eager, cranky, atomic, humble, jolly, bold, wired, quirky,
+   brave, nimble, swift) and noun is a technical term (daemon, webhook, pipeline, cron,
+   lambda, socket, cache, pod, flux, heap, stack, diff, patch, runner, sidecar, proxy,
+   relay, shard, broker). Examples: `blazing-daemon`, `fuzzy-lambda`, `sleepy-sidecar`,
+   `bold-webhook`, `nimble-broker`.
+
    Then ask:
    ```
    ask_user_question:
      header: "New repo"
-     question: "Full name for the new repo? (e.g. myorg/my-coco-agent)"
+     question: "Name for the new repo? (generated suggestion — edit freely)"
      type: text
-     defaultValue: "<detected-login>/my-coco-agent"
+     defaultValue: "<detected-login>/<generated-petname>"
    ```
 
 2. **Snowflake prefix** (`PREFIX`) — ask:
@@ -97,11 +134,14 @@ Collect all three values before Beat 1. Auto-detect where possible.
 
 ## Beat 1 — Scaffold repo from template
 
-**What I'll do:**
-Create `$REPO_PATH` as a public GitHub repo from the `github-coco-agent` template
-and clone it locally.
-
 Enter plan mode and present:
+
+**Why this matters** (Guided mode only):
+Working from a versioned template guarantees every project starts from a known-good
+baseline — OIDC wiring, workflow structure, and prompt files are all pre-tested.
+You own the fork; the template repo is never modified.
+
+**What we'll do:**
 ```
 Creates: $REPO_PATH (public, from https://github.com/Snowflake-Labs/github-coco-agent)
 Clones:  ./$REPO_NAME
@@ -138,7 +178,7 @@ gh repo create "$REPO_PATH" \
 ```
 ask_user_question:
   header: "Beat 1 done"
-  question: "Repo created and cloned. Continue to Beat 2 (disable Actions + repo init)?"
+  question: "Repo created and cloned. Continue to Beat 2 (disable Actions)?"
   options:
     - label: "Yes, continue to Beat 2"
     - label: "Replay Beat 1"
@@ -149,10 +189,32 @@ ask_user_question:
 
 ## Beat 2 — Repo Init (disable Actions)
 
-**What I'll do:**
-Disable GitHub Actions on the new repo so no workflows trigger during setup.
-Actions will be re-enabled in Beat 5 when everything is ready.
+Enter plan mode and present:
 
+**Why this matters** (Guided mode only):
+Running workflows before auth is configured produces failed OIDC exchanges and
+confusing error messages in the logs. Disabling Actions now means the first real
+run will be a clean green one.
+
+**What we'll do:**
+```
+Disables:  GitHub Actions on $REPO_PATH
+Effect:    No workflows trigger until Beat 5 re-enables them
+Command:   gh api repos/$REPO_PATH/actions/permissions -X PUT {"enabled":false}
+```
+
+Exit plan mode, then ask:
+```
+ask_user_question:
+  header: "Beat 2"
+  question: "Disable Actions on $REPO_PATH until setup is complete?"
+  options:
+    - label: "Yes, disable Actions"
+    - label: "Replay Beat 2"
+    - label: "Stop here"
+```
+
+Execute:
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" \
   -X PUT \
@@ -179,11 +241,14 @@ ask_user_question:
 
 ## Beat 3 — Provision Snowflake OIDC user
 
-**What I'll do:**
-Read `$REPO_NAME/snowflake/setup.sql` to confirm the SQL, then execute it to create
-the role, warehouse, and WORKLOAD_IDENTITY user bound to this repo's main branch.
-
 Enter plan mode and present:
+
+**Why this matters** (Guided mode only):
+WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
+GitHub proves the runner's identity; Snowflake verifies the issuer and subject claim.
+No secret is ever stored — the token exists only for the duration of the job.
+
+**What we'll do:**
 ```
 Creates (idempotent — safe to re-run):
   Role:      ${PREFIX}_GITHUB_COCO_AGENT_ROLE
@@ -242,11 +307,14 @@ ask_user_question:
 
 ## Beat 4 — Set GitHub secrets
 
-**What I'll do:**
-Set the three repository secrets the workflows need to authenticate to Snowflake
-via OIDC. No password is stored.
+Enter plan mode and present:
 
-Enter plan mode:
+**Why this matters** (Guided mode only):
+Three config values (account, role, warehouse) tell the workflow which Snowflake
+context to enter. Combined with the OIDC token from Beat 3, this is the complete
+auth context — no password, no API key is ever stored.
+
+**What we'll do:**
 ```
 Secret               Value
 ──────────────────── ─────────────────────────────────────────
@@ -291,6 +359,13 @@ ask_user_question:
 If "Yes, install runner inside the repo":
 
 Enter plan mode and present:
+
+**Why this matters** (Guided mode only):
+A project-local runner lets you test the full loop before committing to GitHub-hosted
+runners. It lives inside the repo so it is always discoverable and removed cleanly
+on teardown.
+
+**What we'll do:**
 ```
 Installs:   $REPO_NAME/.github/runner/  (gitignored)
 Configures: runner bound to https://github.com/$REPO_PATH
@@ -299,7 +374,17 @@ Patches:    runs-on in cortex-scan.yml and cortex-fix.yml → [self-hosted, loca
 Note:       binary is ~100 MB — download takes a moment
 ```
 
-Exit plan mode, then execute:
+Exit plan mode, then ask:
+```
+ask_user_question:
+  header: "Install runner"
+  question: "Install local runner in $REPO_NAME/.github/runner/?"
+  options:
+    - label: "Yes, install"
+    - label: "Stop here"
+```
+
+Execute:
 ```bash
 mkdir -p "$REPO_NAME/.github/runner"
 echo '.github/runner/' >> "$REPO_NAME/.gitignore"
@@ -364,10 +449,30 @@ ask_user_question:
 
 Only execute if user chose "Yes, run smoke test" in Beat 4.
 
-**What I'll do:**
-Copy the smoke-test app (3 intentional issues) into `demo/` (the CI-watched folder),
-enable Actions, commit as a revertable test commit, and push.
-The scan workflow will trigger automatically on the local runner.
+Enter plan mode and present:
+
+**Why this matters** (Guided mode only):
+The smoke-test app contains 3 intentional security and correctness issues. Running it
+proves the loop end-to-end: scan finds issues, fix agents patch them, PRs are opened
+automatically. No production code is touched — this is a safe, revertable test.
+
+**What we'll do:**
+```
+Step 1: write smoke-test app (3 files) to $REPO_NAME/demo/
+Step 2: enable Actions on $REPO_PATH
+Step 3: commit + push  (revertable — git revert HEAD when done)
+Step 4: show Actions URL
+```
+
+Exit plan mode, then ask:
+```
+ask_user_question:
+  header: "Beat 5"
+  question: "Copy smoke-test app, enable Actions, and push to trigger the loop?"
+  options:
+    - label: "Yes, run the smoke test"
+    - label: "Stop here"
+```
 
 **Step 1 — Copy templates:**
 Read `skills/scaffold/references/smoke-test.md` for the full template description
@@ -401,10 +506,11 @@ git revert HEAD --no-edit && git push
 echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
 ```
 
-**What's happening:**
-See `skills/scaffold/references/smoke-test.md` for the full explanation of what
-the templates contain, what issues Cortex will find, and how to interpret results.
-To run this loop locally without a live Actions runner, see `skills/scaffold/references/local-testing.md`.
+**What we did:**
+Smoke-test app pushed to `demo/`. Actions enabled. Scan workflow will trigger on the
+runner and create `[coco-agent]` issues; each issue triggers the fix workflow.
+See `skills/scaffold/references/smoke-test.md` for what to expect.
+For local testing without a live Actions runner, see `skills/scaffold/references/local-testing.md`.
 
 ⚠️ MANDATORY pause (repeatable until satisfied):
 ```
@@ -438,9 +544,38 @@ ask_user_question:
     - label: "Keep everything"
 ```
 
-⚠️ BILLABLE + DESTRUCTIVE. Enter plan mode and present what will be dropped, then ask
-for final confirmation before executing:
+If "Keep everything" → stop.
 
+Enter plan mode and present:
+
+**Why this matters** (Guided mode only):
+Resources left running after a demo cost credits. Teardown reverses Beats 3–4 in
+order: deregister runner → drop Snowflake objects → delete repo. Skipping any step
+leaves orphaned objects.
+
+**What we'll drop:**
+```
+[if "tear down everything"]
+  Runner:    deregistered from $REPO_PATH (if installed)
+  Snowflake: ${PREFIX}_GITHUB_COCO_AGENT_ROLE / _WH / _USER dropped
+  Repo:      $REPO_PATH deleted from GitHub
+
+[if "Drop Snowflake only"]
+  Snowflake: ${PREFIX}_GITHUB_COCO_AGENT_ROLE / _WH / _USER dropped
+  Runner and repo: kept
+```
+
+Exit plan mode, then ask (always fires regardless of mode — destructive and irreversible):
+```
+ask_user_question:
+  header: "Confirm teardown"
+  question: "⚠️ This is irreversible. Proceed with teardown?"
+  options:
+    - label: "Yes, tear down now"
+    - label: "Abort"
+```
+
+Execute:
 ```bash
 # Deregister local runner (if installed)
 if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
@@ -457,3 +592,6 @@ fi
 snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
 gh repo delete "$REPO_PATH" --yes
 ```
+
+**What we did:**
+Snowflake objects dropped. Runner deregistered. Repo deleted. Environment is clean.
