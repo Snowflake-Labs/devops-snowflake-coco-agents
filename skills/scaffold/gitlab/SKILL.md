@@ -29,6 +29,7 @@ Each step builds on the previous — jumping ahead leaves the project in a broke
 - Do not create Snowflake objects beyond what `snowflake/setup.sql` provisions.
 - Do not set CI/CD variables other than the four listed in Configure.
 - Do not enable pipelines before Configure is complete.
+- **NEVER modify the local runner's environment** — no `uv tool uninstall`, no `pip uninstall`, no `brew uninstall`, no overwriting `~/.snowflake/connections.toml`. Local runners use what is already installed. The three-branch `*write_connection` anchor enforces this: if neither `$SNOWFLAKE_TOKEN` nor `$SNOWFLAKE_PAT` is set, the existing connections.toml is used untouched.
 
 ## Sensitive Values
 

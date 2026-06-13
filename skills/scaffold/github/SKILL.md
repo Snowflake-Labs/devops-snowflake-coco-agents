@@ -29,6 +29,7 @@ Each step builds on the previous — jumping ahead leaves the repo in a broken s
 - Do not create Snowflake objects beyond what `snowflake/setup.sql` provisions.
 - Do not set GitHub secrets other than the three listed in Configure.
 - Do not enable Actions before Configure is complete.
+- **NEVER modify the local runner's environment** — no `uv tool uninstall`, no `pip uninstall`, no `brew uninstall`, no overwriting `~/.snowflake/connections.toml`. Local runners use what is already installed. The `if: runner.environment == 'github-hosted'` guard in the workflow templates enforces this: snow install and connections.toml write are skipped entirely on self-hosted runners.
 
 ## Sensitive Values
 
