@@ -46,6 +46,49 @@ Rules:
 - In **What we did** summaries: confirm the secret was set (e.g. "✓ SNOWFLAKE_ACCOUNT secret set") — never print the value.
 - When capturing output that may contain a token (e.g. `gh api .../registration-token`), assign to a shell variable immediately and do not print it in conversation.
 
+## Resume Detection
+
+Run this **before** the Prerequisites Check on every invocation.
+
+```bash
+# 1. Check for manifest inside an existing cloned repo
+MANIFEST_IN_REPO=$(find . -maxdepth 2 -name "manifest.toml" -path "*/.coco-agent/*" 2>/dev/null | head -1)
+# 2. Check for draft manifest written after inputs but before clone
+MANIFEST_DRAFT=$(find ".coco-agent" -name "manifest.toml" -maxdepth 2 2>/dev/null | head -1)
+```
+
+If either is found:
+```bash
+python3 - <<'EOF'
+import tomllib, datetime
+from pathlib import Path
+
+manifest_path = "$MANIFEST_IN_REPO" or "$MANIFEST_DRAFT"
+m = tomllib.load(open(manifest_path, 'rb'))
+
+print(f"\n{'='*55}")
+print(f"  Manifest found: {manifest_path}")
+print(f"  Project : {m['project']['repo_url'] or m['project']['repo_name']}")
+print(f"  Prefix  : {m['project']['prefix']}")
+print(f"  Platform: {m['project']['platform']}")
+print(f"\n  Step progress:")
+for k in sorted(m['steps']):
+    s = m['steps'][k]
+    age = ""
+    if s['completed_at']:
+        secs = (datetime.datetime.now(datetime.timezone.utc) -
+                datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        age = f"  ({secs/60:.0f}m ago)"
+    icon = {"COMPLETE":"✓","IN_PROGRESS":"→","PENDING":"○","SKIPPED":"–"}.get(s['status'],"?")
+    print(f"    {icon}  {k}: {s['label']} [{s['status']}]{age}")
+print(f"{'='*55}\n")
+EOF
+```
+
+If manifest found: load all values (`PREFIX`, `REPO_NAME`, `REPO_PATH`, `REPO_VISIBILITY`, `SKILL_MODE`, `RUNNER_PID`) — **skip re-asking any question whose value is already in the manifest**. Route to first step where `status != "COMPLETE"`. An `IN_PROGRESS` step means it crashed mid-execution — re-run from the start of that step.
+
+If no manifest found: proceed normally to Prerequisites Check and input collection.
+
 ## Prerequisites Check
 
 Run both checks before collecting any inputs. If either fails, stop and help
@@ -175,6 +218,92 @@ Collect all three values before Create Project. Auto-detect where possible.
 
 ---
 
+## Write Draft Manifest
+
+Immediately after all inputs are collected — **before** calling `enter_plan_mode` for Create Project — write the draft manifest so the session is recoverable even if the user stops before the repo is created.
+
+```bash
+ISO_NOW=$(python3 -c "import datetime; print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+mkdir -p ".coco-agent/$REPO_NAME"
+chmod 700 ".coco-agent/$REPO_NAME"
+```
+
+Write `.coco-agent/$REPO_NAME/manifest.toml` (substitute all `$VARIABLES` with collected values):
+
+```toml
+schema_version = "1"
+
+[config]
+stale_threshold_s        = 3600
+runner_stale_threshold_s = 300
+
+[template]
+name       = "github-coco-agent"
+repo_url   = "https://github.com/Snowflake-Labs/github-coco-agent"
+ref        = "main"
+cloned_at  = ""
+
+[project]
+platform   = "github"
+prefix     = "$PREFIX"
+repo_path  = ""
+repo_name  = "$REPO_NAME"
+repo_url   = ""
+visibility = "$REPO_VISIBILITY"
+run_mode   = "$SKILL_MODE"
+created_at = "$ISO_NOW"
+
+[snowflake]
+user      = ""
+role      = ""
+warehouse = ""
+
+[runner]
+installed  = false
+pid        = 0
+runner_id  = ""
+
+[steps.step_1]
+label        = "Create Project"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_2]
+label        = "Hold Before Go-Live"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_3]
+label        = "Connect Snowflake"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_4]
+label        = "Configure"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_5]
+label        = "Watch the Loop"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+```
+
+```bash
+chmod 600 ".coco-agent/$REPO_NAME/manifest.toml"
+```
+
+> Resume rule: on any future session, if `.coco-agent/$REPO_NAME/manifest.toml` or
+> `$REPO_NAME/.coco-agent/manifest.toml` is found, read all values from it and skip
+> re-asking inputs. Route to the first step whose status is not `"COMPLETE"`.
+
+---
+
 ## Create Project
 
 **Pre-step guard — check remote does not already exist:**
@@ -278,6 +407,21 @@ gh repo view https://github.com/Snowflake-Labs/github-coco-agent
 Display the description and file tree so the user can review before confirming.
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started — update `.coco-agent/$REPO_NAME/manifest.toml`:
+```bash
+python3 -c "
+import re, datetime
+from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('.coco-agent/$REPO_NAME/manifest.toml')
+t = p.read_text()
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 ```bash
 gh repo create "$REPO_PATH" \
   --template https://github.com/Snowflake-Labs/github-coco-agent \
@@ -290,6 +434,30 @@ gh api "repos/$REPO_PATH/actions/permissions" \
   --input - <<'EOF'
 {"enabled": false}
 EOF
+```
+
+Move draft manifest into the cloned repo and fill repo identity:
+```bash
+REPO_URL=$(gh repo view "$REPO_PATH" --json url -q .url)
+mkdir -p "$REPO_NAME/.coco-agent"
+chmod 700 "$REPO_NAME/.coco-agent"
+mv ".coco-agent/$REPO_NAME/manifest.toml" "$REPO_NAME/.coco-agent/manifest.toml"
+rmdir ".coco-agent/$REPO_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
+chmod 600 "$REPO_NAME/.coco-agent/manifest.toml"
+python3 -c "
+import re, datetime
+from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml')
+t = p.read_text()
+t = t.replace('repo_path  = \"\"', 'repo_path  = \"$REPO_PATH\"')
+t = t.replace('repo_url   = \"\"', 'repo_url   = \"$REPO_URL\"', 1)
+t = t.replace('cloned_at  = \"\"', f'cloned_at  = \"{now}\"')
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print('✓ Manifest written to $REPO_NAME/.coco-agent/manifest.toml')
+"
 ```
 
 **Post-step verification:**
@@ -309,10 +477,22 @@ If either check fails:
 
 ## Hold Before Go-Live
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-gh api "repos/$REPO_PATH" --jq .name 2>&1   # remote repo accessible
-ls "$REPO_NAME" 2>&1                          # local clone present
+# Check manifest first — skip API call if step_1 completed within stale_threshold_s
+python3 -c "
+import tomllib, datetime
+from pathlib import Path
+p = Path('$REPO_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb'))
+    s = m['steps']['step_1']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — repo verified'); exit(0)
+print('RECHECK')
+" || { gh api "repos/$REPO_PATH" --jq .name 2>&1 && ls "$REPO_NAME" 2>&1; }
 ```
 If either fails:
 > ⚠️ **Gate check failed:** Remote repo or local clone not found.
@@ -334,6 +514,19 @@ Expected:  enabled = false
 ```
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
 ```
@@ -344,6 +537,17 @@ gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<'EOF'
 EOF
 ```
 
+Mark step complete:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+
 ### What we did
 - Confirmed GitHub Actions are disabled on `$REPO_PATH`
 - No workflows will fire until Watch the Loop re-enables them
@@ -352,9 +556,19 @@ EOF
 
 ## Connect Snowflake
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$REPO_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb')); s = m['steps']['step_2']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — Actions-disabled verified'); exit(0)
+print('RECHECK')
+" || gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
 ```
 Expected: `false`. If `true`:
 > ⚠️ **Gate check failed:** Actions are still enabled.
@@ -388,6 +602,19 @@ Also read and display `$REPO_NAME/snowflake/setup.sql` with variables substitute
 so the user can review the exact SQL before confirming.
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 ```bash
 snow sql -f "$REPO_NAME/snowflake/setup.sql" \
   -D "PREFIX=$PREFIX" \
@@ -409,6 +636,22 @@ snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITHUB_COCO_AGENT_WH'" --format jso
 ```
 If either returns empty rows, the setup SQL did not complete — re-run this step.
 
+Mark step complete + fill Snowflake section:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = t.replace('user      = \"\"', 'user      = \"${PREFIX}_GITHUB_COCO_AGENT_USER\"')
+t = t.replace('role      = \"\"', 'role      = \"${PREFIX}_GITHUB_COCO_AGENT_ROLE\"')
+t = t.replace('warehouse = \"\"', 'warehouse = \"${PREFIX}_GITHUB_COCO_AGENT_WH\"')
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print('✓ Snowflake section updated in manifest')
+"
+```
+
 ### What we did
 - Role, warehouse, and `SERVICE` user with `WORKLOAD_IDENTITY` OIDC config created and verified
 - Subject claim bound to `repo:$REPO_PATH:ref:refs/heads/main`
@@ -417,9 +660,19 @@ If either returns empty rows, the setup SQL did not complete — re-run this ste
 
 ## Configure
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-snow sql -q "DESC USER ${PREFIX}_GITHUB_COCO_AGENT_USER" --format json 2>&1
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$REPO_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb')); s = m['steps']['step_3']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — Snowflake user verified'); exit(0)
+print('RECHECK')
+" || snow sql -q "DESC USER ${PREFIX}_GITHUB_COCO_AGENT_USER" --format json 2>&1
 ```
 If empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found.
@@ -443,6 +696,18 @@ If empty or error:
 | `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITHUB_COCO_AGENT_WH` |
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
 
 ```bash
 gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT"
@@ -518,11 +783,27 @@ Start the runner in the background (safe across chat steps — won't be killed w
 ```bash
 nohup "$REPO_NAME/.github/runner/run.sh" \
   > "$REPO_NAME/.github/runner/runner.log" 2>&1 &
-echo $! > "$REPO_NAME/.github/runner/runner.pid"
+RUNNER_PID=$!
+echo $RUNNER_PID > "$REPO_NAME/.github/runner/runner.pid"
 sleep 3
 grep -q "Listening for Jobs" "$REPO_NAME/.github/runner/runner.log" \
-  && echo "✓ Runner is listening (PID $(cat $REPO_NAME/.github/runner/runner.pid))" \
+  && echo "✓ Runner is listening (PID $RUNNER_PID)" \
   || echo "Still starting — check: tail -f $REPO_NAME/.github/runner/runner.log"
+```
+
+Persist PID and mark configure complete in manifest:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$REPO_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = t.replace('installed  = false', 'installed  = true')
+t = re.sub(r'pid\s*=\s*0', f'pid        = $RUNNER_PID', t)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print(f'✓ Runner PID $RUNNER_PID persisted in manifest')
+"
 ```
 
 > `runner.pid` and `runner.log` are inside `.github/runner/` which is gitignored.
@@ -557,6 +838,7 @@ If status is not `online`:
 ### What we did
 - Runner installed in `$REPO_NAME/.github/runner/` and online
 - Workflows patched to `runs-on: [self-hosted, local]`
+- Runner PID persisted in `.coco-agent/manifest.toml`
 
 > To restore `ubuntu-latest` later: `git revert HEAD --no-edit && git push`
 
@@ -588,9 +870,21 @@ gh api "repos/$REPO_PATH/actions/permissions" \
 EOF
 ```
 
-**Gate check (if local runner was set up):**
+**Gate check (staleness-aware, if local runner was set up):**
 ```bash
-gh api "repos/$REPO_PATH/actions/runners" --jq '.runners | length'
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$REPO_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb'))
+    if m['runner']['pid'] > 0:
+        s = m['steps']['step_4']
+        if s['status'] == 'COMPLETE' and s['completed_at']:
+            age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+            if age < m['config']['runner_stale_threshold_s']:
+                print(f'Using manifest cache ({age:.0f}s old) — runner verified'); exit(0)
+print('RECHECK')
+" || gh api "repos/$REPO_PATH/actions/runners" --jq '.runners | length'
 ```
 If 0:
 > ⚠️ **Gate check failed:** No runner is online.
@@ -674,30 +968,57 @@ ask_user_question:
   question: "Tear down the project resources?"
   options:
     - label: "Yes, tear down everything"
-      description: "Drop Snowflake resources and delete the GitHub repo"
+      description: "Drop Snowflake resources, delete GitHub repo, and remove local clone"
     - label: "Drop Snowflake only"
+      description: "Keep repo and local clone; drop Snowflake objects and deregister runner"
     - label: "Keep everything"
 ```
 
 If "Keep everything" → stop.
 
+**Pre-flight: read manifest (or ask if missing)**
+```bash
+MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"
+if [ -f "$MANIFEST" ]; then
+  PREFIX=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['prefix'])")
+  REPO_PATH=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['repo_path'])")
+  REPO_URL=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['repo_url'])")
+  RUNNER_PID=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['runner']['pid'])")
+  RUNNER_INSTALLED=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['runner']['installed'])")
+  echo "✓ Manifest loaded: PREFIX=$PREFIX REPO_PATH=$REPO_PATH RUNNER_PID=$RUNNER_PID"
+else
+  echo "No manifest found — enter values manually"
+  # ask_user_question for PREFIX and REPO_PATH
+fi
+```
+
 ⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
-> Resources left running after a demo cost credits. Teardown reverses the setup
-> in order: deregister runner → drop Snowflake objects → delete repo.
+> Resources left running after a demo cost credits. Teardown runs in dependency
+> order: disable CI first so no new jobs fire, then stop and deregister the runner,
+> then drop Snowflake objects, then delete the remote repo, then remove the local clone.
 > Skipping any step leaves orphaned objects.
 
 **What we'll drop**
 ```
 [if "tear down everything"]
-  Runner:    deregistered from $REPO_PATH (if installed)
-  Snowflake: ${PREFIX}_GITHUB_COCO_AGENT_ROLE / _WH / _USER dropped
-  Repo:      $REPO_PATH deleted from GitHub
+  1. Disable Actions            (no new workflow runs during teardown)
+  2. Kill runner process        (PID: $RUNNER_PID — if runner installed)
+  3. Deregister runner          (from GitHub API — if runner installed)
+  4. Drop Snowflake:
+       DROP USER      IF EXISTS ${PREFIX}_GITHUB_COCO_AGENT_USER;
+       DROP WAREHOUSE IF EXISTS ${PREFIX}_GITHUB_COCO_AGENT_WH;
+       DROP ROLE      IF EXISTS ${PREFIX}_GITHUB_COCO_AGENT_ROLE;
+  5. Delete remote:  $REPO_URL
+  6. Delete local:   ./$REPO_NAME/  (manifest included)
 
 [if "Drop Snowflake only"]
-  Snowflake: ${PREFIX}_GITHUB_COCO_AGENT_ROLE / _WH / _USER dropped
-  Runner and repo: kept
+  1. Kill runner process        (PID: $RUNNER_PID — if runner installed)
+  2. Deregister runner + restore ubuntu-latest workflows + push
+  3. Disable Actions            (no live runner to serve jobs)
+  4. Drop Snowflake (same 3 objects)
+  5. Remove .coco-agent/        (manifest deleted — repo kept)
 ```
 
 Call `exit_plan_mode`. Then ask (always fires regardless of mode — destructive and irreversible):
@@ -710,31 +1031,72 @@ ask_user_question:
     - label: "Abort"
 ```
 
-Execute:
+**Execute — "tear down everything":**
 ```bash
-# Deregister local runner (if installed)
+# 1. Disable Actions
+gh api "repos/$REPO_PATH/actions/permissions" \
+  -X PUT --input - <<<'{"enabled": false}'
+
+# 2. Kill runner process
+if [ "${RUNNER_PID:-0}" -gt 0 ]; then
+  kill "$RUNNER_PID" 2>/dev/null || true; sleep 2
+fi
+
+# 3. Deregister runner (no workflow patch — repo being deleted)
 if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
-  # Kill the background runner process gracefully before deregistering
-  if [ -f "$REPO_NAME/.github/runner/runner.pid" ]; then
-    kill "$(cat $REPO_NAME/.github/runner/runner.pid)" 2>/dev/null || true
-    sleep 2
-  fi
+  REMOVE_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/remove-token" -X POST -q .token)
+  "$REPO_NAME/.github/runner/config.sh" remove --token "$REMOVE_TOKEN"
+fi
+
+# 4. Drop Snowflake resources
+snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
+
+# 5. Delete remote repo
+gh repo delete "$REPO_PATH" --yes
+
+# 6. Delete local clone (manifest inside — gone with it)
+rm -rf "$REPO_NAME"
+# Also clean up CWD draft manifest if it exists
+rm -rf ".coco-agent/$REPO_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
+echo "✓ $REPO_NAME removed — environment is clean"
+```
+
+**Execute — "Drop Snowflake only":**
+```bash
+# 1. Kill runner process
+if [ "${RUNNER_PID:-0}" -gt 0 ]; then
+  kill "$RUNNER_PID" 2>/dev/null || true; sleep 2
+fi
+
+# 2. Deregister runner + restore workflows + push
+if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
   REMOVE_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/remove-token" -X POST -q .token)
   "$REPO_NAME/.github/runner/config.sh" remove --token "$REMOVE_TOKEN"
   sed -i '' 's/runs-on: \[self-hosted, local\]/runs-on: ubuntu-latest/g' \
     "$REPO_NAME/.github/workflows/cortex-scan.yml" \
     "$REPO_NAME/.github/workflows/cortex-fix.yml"
   git -C "$REPO_NAME" add .github/workflows/
-  git -C "$REPO_NAME" commit -m "ci(workflows): restore ubuntu-latest runner [skip ci]" 2>/dev/null || true
+  git -C "$REPO_NAME" commit -m "ci(workflows): restore ubuntu-latest runner [skip ci]"
+  git -C "$REPO_NAME" push
 fi
 
+# 3. Disable Actions
+gh api "repos/$REPO_PATH/actions/permissions" \
+  -X PUT --input - <<<'{"enabled": false}'
+
+# 4. Drop Snowflake resources
 snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
-gh repo delete "$REPO_PATH" --yes
+
+# 5. Remove manifest (marks setup as torn down — repo kept)
+rm -rf "$REPO_NAME/.coco-agent/"
+echo "✓ Snowflake resources dropped. Repo kept at $REPO_URL"
 ```
 
 ### What we did
-- Runner deregistered (if installed)
-- Snowflake objects dropped
-- Repo deleted
+- CI disabled (Actions blocked)
+- Runner stopped and deregistered (if installed)
+- Snowflake objects dropped: `${PREFIX}_GITHUB_COCO_AGENT_USER / _WH / _ROLE`
+- [tear down everything] Repo deleted and local clone removed
+- [Drop Snowflake only] Manifest removed — re-run scaffold to set up again
 
 > ✓ **Done:** Environment is clean.

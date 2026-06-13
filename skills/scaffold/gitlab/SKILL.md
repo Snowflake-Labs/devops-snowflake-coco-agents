@@ -48,6 +48,47 @@ Rules:
 - After the user provides `GITLAB_TOKEN_coco` via `ask_user_question`, store it immediately and never reference the raw value again — treat it as write-only.
 - When capturing output that may contain a token (e.g. runner registration token), assign to a shell variable immediately and do not print it in conversation.
 
+## Resume Detection
+
+Run this **before** the Prerequisites Check on every invocation.
+
+```bash
+MANIFEST_IN_REPO=$(find . -maxdepth 2 -name "manifest.toml" -path "*/.coco-agent/*" 2>/dev/null | head -1)
+MANIFEST_DRAFT=$(find ".coco-agent" -name "manifest.toml" -maxdepth 2 2>/dev/null | head -1)
+```
+
+If either is found:
+```bash
+python3 - <<'EOF'
+import tomllib, datetime
+from pathlib import Path
+
+manifest_path = "$MANIFEST_IN_REPO" or "$MANIFEST_DRAFT"
+m = tomllib.load(open(manifest_path, 'rb'))
+
+print(f"\n{'='*55}")
+print(f"  Manifest found: {manifest_path}")
+print(f"  Project : {m['project']['repo_url'] or m['project']['repo_name']}")
+print(f"  Prefix  : {m['project']['prefix']}")
+print(f"  Platform: {m['project']['platform']}")
+print(f"\n  Step progress:")
+for k in sorted(m['steps']):
+    s = m['steps'][k]
+    age = ""
+    if s['completed_at']:
+        secs = (datetime.datetime.now(datetime.timezone.utc) -
+                datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        age = f"  ({secs/60:.0f}m ago)"
+    icon = {"COMPLETE":"✓","IN_PROGRESS":"→","PENDING":"○","SKIPPED":"–"}.get(s['status'],"?")
+    print(f"    {icon}  {k}: {s['label']} [{s['status']}]{age}")
+print(f"{'='*55}\n")
+EOF
+```
+
+If manifest found: load all values (`PREFIX`, `PROJECT_NAME`, `PROJECT_PATH`, `PROJECT_VISIBILITY`, `SKILL_MODE`, `RUNNER_PID`, `RUNNER_ID`) — **skip re-asking any question whose value is already in the manifest**. Route to first step where `status != "COMPLETE"`. An `IN_PROGRESS` step means it crashed mid-execution — re-run from the start of that step.
+
+If no manifest found: proceed normally to Prerequisites Check and input collection.
+
 ## Prerequisites Check
 
 Run both checks before collecting any inputs. If either fails, stop and help
@@ -185,6 +226,92 @@ ENCODED_PATH=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote('$PR
 
 ---
 
+## Write Draft Manifest
+
+Immediately after all inputs are collected — **before** calling `enter_plan_mode` for Create Project — write the draft manifest.
+
+```bash
+ISO_NOW=$(python3 -c "import datetime; print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))")
+mkdir -p ".coco-agent/$PROJECT_NAME"
+chmod 700 ".coco-agent/$PROJECT_NAME"
+```
+
+Write `.coco-agent/$PROJECT_NAME/manifest.toml` (substitute all `$VARIABLES`):
+
+```toml
+schema_version = "1"
+
+[config]
+stale_threshold_s        = 3600
+runner_stale_threshold_s = 300
+
+[template]
+name       = "gitlab-coco-agent"
+repo_url   = "https://gitlab.com/Snowflake-Labs/gitlab-coco-agent"
+ref        = "main"
+cloned_at  = ""
+
+[project]
+platform   = "gitlab"
+prefix     = "$PREFIX"
+repo_path  = ""
+repo_name  = "$PROJECT_NAME"
+repo_url   = ""
+visibility = "$PROJECT_VISIBILITY"
+run_mode   = "$SKILL_MODE"
+created_at = "$ISO_NOW"
+
+[snowflake]
+user      = ""
+role      = ""
+warehouse = ""
+
+[runner]
+installed  = false
+pid        = 0
+runner_id  = ""
+
+[steps.step_1]
+label        = "Create Project"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_2]
+label        = "Hold Before Go-Live"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_3]
+label        = "Connect Snowflake"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_4]
+label        = "Configure"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+
+[steps.step_5]
+label        = "Watch the Loop"
+status       = "PENDING"
+started_at   = ""
+completed_at = ""
+```
+
+```bash
+chmod 600 ".coco-agent/$PROJECT_NAME/manifest.toml"
+```
+
+> Resume rule: on any future session, if `.coco-agent/$PROJECT_NAME/manifest.toml` or
+> `$PROJECT_NAME/.coco-agent/manifest.toml` is found, read all values from it and skip
+> re-asking inputs. Route to the first step whose status is not `"COMPLETE"`.
+
+---
+
 ## Create Project
 
 **Pre-step guard — check remote does not already exist:**
@@ -289,6 +416,19 @@ glab repo view https://gitlab.com/kameshsampath/gitlab-coco-agent
 Display the description and file tree so the user can review before confirming.
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('.coco-agent/$PROJECT_NAME/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 ```bash
 glab project create "$PROJECT_NAME" \
   --group "$GROUP" \
@@ -299,6 +439,28 @@ glab repo clone "$PROJECT_PATH"
 
 # Disable pipelines immediately — prevents spurious runs during setup
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
+```
+
+Move draft manifest into the cloned repo and fill project identity:
+```bash
+PROJECT_URL="https://gitlab.com/$PROJECT_PATH"
+mkdir -p "$PROJECT_NAME/.coco-agent"
+chmod 700 "$PROJECT_NAME/.coco-agent"
+mv ".coco-agent/$PROJECT_NAME/manifest.toml" "$PROJECT_NAME/.coco-agent/manifest.toml"
+rmdir ".coco-agent/$PROJECT_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
+chmod 600 "$PROJECT_NAME/.coco-agent/manifest.toml"
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = t.replace('repo_path  = \"\"', 'repo_path  = \"$PROJECT_PATH\"')
+t = t.replace('repo_url   = \"\"', 'repo_url   = \"$PROJECT_URL\"', 1)
+t = t.replace('cloned_at  = \"\"', f'cloned_at  = \"{now}\"')
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_1\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print('✓ Manifest written to $PROJECT_NAME/.coco-agent/manifest.toml')
+"
 ```
 
 **Post-step verification:**
@@ -318,10 +480,19 @@ If either check fails:
 
 ## Hold Before Go-Live
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-glab api "projects/$ENCODED_PATH" --jq .name 2>&1   # remote accessible
-ls "$PROJECT_NAME" 2>&1                               # local clone present
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb')); s = m['steps']['step_1']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — project verified'); exit(0)
+print('RECHECK')
+" || { glab api "projects/$ENCODED_PATH" --jq .name 2>&1 && ls "$PROJECT_NAME" 2>&1; }
 ```
 If either fails:
 > ⚠️ **Gate check failed:** Remote project or local clone not found.
@@ -344,6 +515,18 @@ Expected:  builds_access_level = "disabled"
 
 Call `exit_plan_mode`. Then execute directly:
 
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 **Verify:**
 ```bash
 glab api "projects/$ENCODED_PATH" --jq .builds_access_level
@@ -351,6 +534,18 @@ glab api "projects/$ENCODED_PATH" --jq .builds_access_level
 Expected: `"disabled"`. If not, re-disable:
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
+```
+
+Mark step complete:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_2\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
 ```
 
 ### What we did
@@ -361,9 +556,19 @@ glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 
 ## Connect Snowflake
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb')); s = m['steps']['step_2']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — pipelines-disabled verified'); exit(0)
+print('RECHECK')
+" || glab api "projects/$ENCODED_PATH" --jq .builds_access_level
 ```
 Expected: `"disabled"`. If not:
 > ⚠️ **Gate check failed:** Pipelines are still enabled.
@@ -397,6 +602,19 @@ Also read and display `$PROJECT_NAME/snowflake/setup.sql` with variables substit
 so the user can review the exact SQL before confirming.
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
+
 ```bash
 snow sql -f "$PROJECT_NAME/snowflake/setup.sql" \
   -D "PREFIX=$PREFIX" \
@@ -419,6 +637,22 @@ snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITLAB_COCO_AGENT_WH'" --format jso
 ```
 If either returns empty rows, the setup SQL did not complete — re-run this step.
 
+Mark step complete + fill Snowflake section:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = t.replace('user      = \"\"', 'user      = \"${PREFIX}_GITLAB_COCO_AGENT_USER\"')
+t = t.replace('role      = \"\"', 'role      = \"${PREFIX}_GITLAB_COCO_AGENT_ROLE\"')
+t = t.replace('warehouse = \"\"', 'warehouse = \"${PREFIX}_GITLAB_COCO_AGENT_WH\"')
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_3\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print('✓ Snowflake section updated in manifest')
+"
+```
+
 ### What we did
 - Role, warehouse, and `SERVICE` user with `WORKLOAD_IDENTITY` OIDC config created and verified
 - Subject claim bound to `project_path:$PROJECT_PATH:ref_type:branch:ref:main`
@@ -427,9 +661,19 @@ If either returns empty rows, the setup SQL did not complete — re-run this ste
 
 ## Configure
 
-**Gate check:**
+**Gate check (staleness-aware):**
 ```bash
-snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
+python3 -c "
+import tomllib, datetime; from pathlib import Path
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml')
+if p.exists():
+    m = tomllib.load(p.open('rb')); s = m['steps']['step_3']
+    if s['status'] == 'COMPLETE' and s['completed_at']:
+        age = (datetime.datetime.now(datetime.timezone.utc) - datetime.datetime.fromisoformat(s['completed_at'])).total_seconds()
+        if age < m['config']['stale_threshold_s']:
+            print(f'Using manifest cache ({age:.0f}s old) — Snowflake user verified'); exit(0)
+print('RECHECK')
+" || snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
 ```
 If empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found.
@@ -454,6 +698,18 @@ If empty or error:
 | `GITLAB_TOKEN_coco` | (provided token) | yes |
 
 Call `exit_plan_mode`. Then execute directly:
+
+Mark step started:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)status\s*=\s*\"PENDING\"', r'\1status       = \"IN_PROGRESS\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)started_at\s*=\s*\"\"', rf'\1started_at   = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+"
+```
 
 ```bash
 cd "$PROJECT_NAME"
@@ -549,11 +805,28 @@ Start the runner in the background (safe across chat steps — won't be killed w
 nohup "$PROJECT_NAME/.gitlab/runner/gitlab-runner" run \
   --config "$PROJECT_NAME/.gitlab/runner/config.toml" \
   > "$PROJECT_NAME/.gitlab/runner/runner.log" 2>&1 &
-echo $! > "$PROJECT_NAME/.gitlab/runner/runner.pid"
+RUNNER_PID=$!
+echo $RUNNER_PID > "$PROJECT_NAME/.gitlab/runner/runner.pid"
 sleep 3
 grep -q "Listening for Jobs" "$PROJECT_NAME/.gitlab/runner/runner.log" \
-  && echo "✓ Runner is listening (PID $(cat $PROJECT_NAME/.gitlab/runner/runner.pid))" \
+  && echo "✓ Runner is listening (PID $RUNNER_PID)" \
   || echo "Still starting — check: tail -f $PROJECT_NAME/.gitlab/runner/runner.log"
+```
+
+Persist PID + runner_id and mark configure complete in manifest:
+```bash
+python3 -c "
+import re, datetime; from pathlib import Path
+now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+p = Path('$PROJECT_NAME/.coco-agent/manifest.toml'); t = p.read_text()
+t = t.replace('installed  = false', 'installed  = true')
+t = re.sub(r'pid\s*=\s*0', f'pid        = $RUNNER_PID', t)
+t = re.sub(r'runner_id\s*=\s*\"\"', f'runner_id  = \"$RUNNER_ID\"', t)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)status\s*=\s*\"IN_PROGRESS\"', r'\1status       = \"COMPLETE\"', t, flags=re.DOTALL)
+t = re.sub(r'(\[steps\.step_4\][^\[]*?)completed_at\s*=\s*\"\"', rf'\1completed_at = \"{now}\"', t, flags=re.DOTALL)
+p.write_text(t)
+print(f'✓ Runner PID $RUNNER_PID and ID $RUNNER_ID persisted in manifest')
+"
 ```
 
 > `runner.pid` and `runner.log` are inside `.gitlab/runner/` which is gitignored.
@@ -704,30 +977,58 @@ ask_user_question:
   question: "Tear down the project resources?"
   options:
     - label: "Yes, tear down everything"
-      description: "Drop Snowflake resources and delete the GitLab project"
+      description: "Drop Snowflake resources, delete GitLab project, and remove local clone"
     - label: "Drop Snowflake only"
+      description: "Keep project and local clone; drop Snowflake objects and deregister runner"
     - label: "Keep everything"
 ```
 
 If "Keep everything" → stop.
 
+**Pre-flight: read manifest (or ask if missing)**
+```bash
+MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
+if [ -f "$MANIFEST" ]; then
+  PREFIX=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['prefix'])")
+  PROJECT_PATH=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['repo_path'])")
+  PROJECT_URL=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['project']['repo_url'])")
+  RUNNER_PID=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['runner']['pid'])")
+  RUNNER_ID=$(python3 -c "import tomllib; m=tomllib.load(open('$MANIFEST','rb')); print(m['runner']['runner_id'])")
+  ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_PATH', safe=''))")
+  echo "✓ Manifest loaded: PREFIX=$PREFIX PROJECT_PATH=$PROJECT_PATH RUNNER_PID=$RUNNER_PID RUNNER_ID=$RUNNER_ID"
+else
+  echo "No manifest found — enter values manually"
+  # ask_user_question for PREFIX and PROJECT_PATH
+fi
+```
+
 ⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
-> Resources left running after a demo cost credits. Teardown reverses the setup
-> in order: deregister runner → drop Snowflake objects → delete project.
+> Resources left running after a demo cost credits. Teardown runs in dependency
+> order: disable CI first so no new jobs fire, then stop and deregister the runner,
+> then drop Snowflake objects, then delete the remote project, then remove the local clone.
 > Skipping any step leaves orphaned objects.
 
 **What we'll drop**
 ```
 [if "tear down everything"]
-  Runner:    deregistered from $PROJECT_PATH (if installed, ID: $RUNNER_ID)
-  Snowflake: ${PREFIX}_GITLAB_COCO_AGENT_ROLE / _WH / _USER dropped
-  Project:   $PROJECT_PATH deleted from GitLab
+  1. Disable pipelines          (no new CI jobs during teardown)
+  2. Kill runner process        (PID: $RUNNER_PID — if runner installed)
+  3. Deregister runner          (ID: $RUNNER_ID — from GitLab API)
+  4. Drop Snowflake:
+       DROP USER      IF EXISTS ${PREFIX}_GITLAB_COCO_AGENT_USER;
+       DROP WAREHOUSE IF EXISTS ${PREFIX}_GITLAB_COCO_AGENT_WH;
+       DROP ROLE      IF EXISTS ${PREFIX}_GITLAB_COCO_AGENT_ROLE;
+  5. Delete remote:  $PROJECT_URL
+  6. Delete local:   ./$PROJECT_NAME/  (manifest included)
 
 [if "Drop Snowflake only"]
-  Snowflake: ${PREFIX}_GITLAB_COCO_AGENT_ROLE / _WH / _USER dropped
-  Runner and project: kept
+  1. Kill runner process        (PID: $RUNNER_PID — if runner installed)
+  2. Deregister runner + restore default runner tags + push
+  3. Disable pipelines          (no live runner to serve jobs)
+  4. Drop Snowflake (same 3 objects)
+  5. Remove .coco-agent/        (manifest deleted — project kept)
 ```
 
 Call `exit_plan_mode`. Then ask (always fires regardless of mode — destructive and irreversible):
@@ -740,15 +1041,44 @@ ask_user_question:
     - label: "Abort"
 ```
 
-Execute:
+**Execute — "tear down everything":**
 ```bash
-# Deregister local runner (if installed)
-if [ -n "$RUNNER_ID" ]; then
-  # Kill the background runner process gracefully before deregistering
-  if [ -f "$PROJECT_NAME/.gitlab/runner/runner.pid" ]; then
-    kill "$(cat $PROJECT_NAME/.gitlab/runner/runner.pid)" 2>/dev/null || true
-    sleep 2
-  fi
+# 1. Disable pipelines
+glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
+
+# 2. Kill runner process
+if [ "${RUNNER_PID:-0}" -gt 0 ]; then
+  kill "$RUNNER_PID" 2>/dev/null || true; sleep 2
+fi
+
+# 3. Deregister runner (no tag patch — project being deleted)
+if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
+  glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
+fi
+
+# 4. Drop Snowflake resources
+snow sql -f "$PROJECT_NAME/snowflake/teardown.sql" \
+  -D "PREFIX=$PREFIX" \
+  --enable-templating STANDARD
+
+# 5. Delete remote project
+glab project delete "$PROJECT_PATH" --yes
+
+# 6. Delete local clone (manifest inside — gone with it)
+rm -rf "$PROJECT_NAME"
+rm -rf ".coco-agent/$PROJECT_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
+echo "✓ $PROJECT_NAME removed — environment is clean"
+```
+
+**Execute — "Drop Snowflake only":**
+```bash
+# 1. Kill runner process
+if [ "${RUNNER_PID:-0}" -gt 0 ]; then
+  kill "$RUNNER_PID" 2>/dev/null || true; sleep 2
+fi
+
+# 2. Deregister runner + remove local tags + push
+if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
   glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
   python3 - << 'PYEOF'
 import re, os
@@ -760,19 +1090,28 @@ open(path, "w").write(content)
 print("Reverted: tags: [local] removed")
 PYEOF
   git -C "$PROJECT_NAME" add .gitlab-ci.yml
-  git -C "$PROJECT_NAME" commit -m "ci: restore default runner [skip ci]" 2>/dev/null || true
+  git -C "$PROJECT_NAME" commit -m "ci: restore default runner [skip ci]"
+  git -C "$PROJECT_NAME" push
 fi
 
+# 3. Disable pipelines
+glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
+
+# 4. Drop Snowflake resources
 snow sql -f "$PROJECT_NAME/snowflake/teardown.sql" \
   -D "PREFIX=$PREFIX" \
   --enable-templating STANDARD
 
-glab project delete "$PROJECT_PATH" --yes
+# 5. Remove manifest (project kept)
+rm -rf "$PROJECT_NAME/.coco-agent/"
+echo "✓ Snowflake resources dropped. Project kept at $PROJECT_URL"
 ```
 
 ### What we did
-- Runner deregistered (if installed)
-- Snowflake objects dropped
-- Project deleted
+- CI disabled (pipelines blocked)
+- Runner stopped and deregistered (if installed)
+- Snowflake objects dropped: `${PREFIX}_GITLAB_COCO_AGENT_USER / _WH / _ROLE`
+- [tear down everything] Project deleted and local clone removed
+- [Drop Snowflake only] Manifest removed — re-run scaffold to set up again
 
 > ✓ **Done:** Environment is clean.
