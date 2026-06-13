@@ -21,11 +21,18 @@ COORDINATOR_LIMIT = 500
 STEP_LIMIT = 200
 
 # Sentinel that must NOT appear in step files (indicates inlined SKILL_DIR block)
-INLINE_SENTINEL = "find ~/.snowflake/cortex/plugins -name \"manifest_ops.py\""
+INLINE_SENTINEL = 'find ~/.snowflake/cortex/plugins -name "manifest_ops.py"'
 
 STDLIB_MODULES = {
-    "argparse", "contextlib", "datetime", "os", "pathlib",
-    "re", "sys", "tomllib", "__future__",
+    "argparse",
+    "contextlib",
+    "datetime",
+    "os",
+    "pathlib",
+    "re",
+    "sys",
+    "tomllib",
+    "__future__",
 }
 
 violations: list[str] = []
@@ -34,9 +41,7 @@ violations: list[str] = []
 def check_line_count(path: Path, limit: int) -> None:
     lines = path.read_text().count("\n")
     if lines > limit:
-        violations.append(
-            f"  {path.relative_to(SCAFFOLD)}: {lines} lines (limit {limit})"
-        )
+        violations.append(f"  {path.relative_to(SCAFFOLD)}: {lines} lines (limit {limit})")
 
 
 def check_no_inline_skill_dir(path: Path) -> None:
@@ -55,9 +60,7 @@ def check_manifest_ops_imports(path: Path) -> None:
         # Extract module name
         module = stripped.split()[1].split(".")[0]
         if module not in STDLIB_MODULES:
-            violations.append(
-                f"  {path.relative_to(SCAFFOLD)}: non-stdlib import '{module}'"
-            )
+            violations.append(f"  {path.relative_to(SCAFFOLD)}: non-stdlib import '{module}'")
 
 
 def main() -> int:

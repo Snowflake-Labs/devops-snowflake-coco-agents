@@ -1,0 +1,27 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "N",    # pep8-naming
+    "RUF",  # ruff-specific
+]
+ignore = [
+    "PLR0912",  # too many branches — CLI dispatch
+    "PLR0913",  # too many arguments — argparse commands
+    "PLR0915",  # too many statements — CLI commands
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.17",
+]

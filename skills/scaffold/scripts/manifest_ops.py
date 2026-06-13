@@ -68,9 +68,8 @@ import contextlib
 import datetime
 import os
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 SCHEMA_VERSION = "1"
 
@@ -434,7 +433,7 @@ def cmd_summary(args: argparse.Namespace) -> int:
     print(f"  Prefix   : {proj.get('prefix', '?')}")
     print(f"  Platform : {proj.get('platform', '?')}")
     print("\n Step progress:")
-    icon_map = {"COMPLETE": "✓", "IN_PROGRESS": "→", "PENDING": "○", "SKIPPED": "–"}
+    icon_map = {"COMPLETE": "✓", "IN_PROGRESS": "→", "PENDING": "○", "SKIPPED": "-"}
     for key in sorted(data.get("steps", {})):
         step = data["steps"][key]
         age = ""
@@ -468,9 +467,7 @@ def cmd_check_stale(args: argparse.Namespace) -> int:
         completed = datetime.datetime.fromisoformat(completed_at)
         age = (datetime.datetime.now(datetime.UTC) - completed).total_seconds()
         threshold = args.threshold or data.get("config", {}).get(
-            "runner_stale_threshold_s"
-            if "runner" in args.step
-            else "stale_threshold_s",
+            "runner_stale_threshold_s" if "runner" in args.step else "stale_threshold_s",
             3600,
         )
         if age < threshold:
@@ -493,12 +490,8 @@ def _build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="command", required=True)
 
     # init
-    pi = sub.add_parser(
-        "init", help="Write a fresh draft manifest after input collection"
-    )
-    pi.add_argument(
-        "--draft-path", required=True, help="Directory to write manifest.toml into"
-    )
+    pi = sub.add_parser("init", help="Write a fresh draft manifest after input collection")
+    pi.add_argument("--draft-path", required=True, help="Directory to write manifest.toml into")
     pi.add_argument("--prefix", required=True)
     pi.add_argument("--repo-name", required=True)
     pi.add_argument("--visibility", required=True)
@@ -507,9 +500,7 @@ def _build_parser() -> argparse.ArgumentParser:
     pi.add_argument("--template-name", required=True)
 
     # move
-    pm = sub.add_parser(
-        "move", help="Move draft into cloned repo, fill repo_path/repo_url"
-    )
+    pm = sub.add_parser("move", help="Move draft into cloned repo, fill repo_path/repo_url")
     pm.add_argument("--from", dest="from_path", required=True)
     pm.add_argument("--to", dest="to_path", required=True)
     pm.add_argument("--repo-path", required=True)
@@ -526,9 +517,7 @@ def _build_parser() -> argparse.ArgumentParser:
     pc.add_argument("--step", required=True)
 
     # fill-snowflake
-    pfs = sub.add_parser(
-        "fill-snowflake", help="Fill [snowflake] with derived object names"
-    )
+    pfs = sub.add_parser("fill-snowflake", help="Fill [snowflake] with derived object names")
     pfs.add_argument("--manifest", required=True)
     pfs.add_argument("--prefix", required=True)
     pfs.add_argument("--platform", required=True, choices=["github", "gitlab"])
@@ -552,9 +541,7 @@ def _build_parser() -> argparse.ArgumentParser:
     pcs = sub.add_parser("check-stale", help="Exit 0=use cache, 1=re-run gate")
     pcs.add_argument("--manifest", required=True)
     pcs.add_argument("--step", required=True)
-    pcs.add_argument(
-        "--threshold", type=int, default=0, help="Override stale threshold (seconds)"
-    )
+    pcs.add_argument("--threshold", type=int, default=0, help="Override stale threshold (seconds)")
 
     return p
 
