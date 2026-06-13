@@ -14,9 +14,8 @@ description: >
 ⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
 content (Why this matters, What we'll do, resource tables, command previews).
 Call `exit_plan_mode` immediately after the preview — the plan mode confirmation
-IS the single execute gate. After `exit_plan_mode`, execute directly without
-asking again. Only steps with genuine branching options (e.g. "Show setup.sql
-first") keep a post-exit question.
+IS the single execute gate. After `exit_plan_mode`, execute directly.
+Template previews and setup SQL are shown inside plan mode by default.
 
 ## Step Order
 
@@ -264,21 +263,13 @@ Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, from https://gitlab.com/kameshsamp
 Clones:  ./$PROJECT_NAME
 ```
 
-Call `exit_plan_mode`. Then ask:
+Also run to show the template structure:
+```bash
+glab repo view https://gitlab.com/kameshsampath/gitlab-coco-agent
 ```
-ask_user_question:
-  header: "Create Project"
-  question: "Create project $PROJECT_PATH from the gitlab-coco-agent template?"
-  options:
-    - label: "Create and clone"
-    - label: "Show me the template first"
-      description: "Preview https://gitlab.com/kameshsampath/gitlab-coco-agent"
-    - label: "Abort"
-```
+Display the description and file tree so the user can review before confirming.
 
-If "Show me the template first": run `glab repo view https://gitlab.com/kameshsampath/gitlab-coco-agent`, then re-ask.
-
-Execute:
+Call `exit_plan_mode`. Then execute directly:
 ```bash
 glab project create "$PROJECT_NAME" \
   --group "$GROUP" \
@@ -404,20 +395,10 @@ Expected: `"disabled"`. If not:
 | Auth | `TYPE = SERVICE`, `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://gitlab.com)` |
 | Subject | `project_path:$PROJECT_PATH:ref_type:branch:ref:main` |
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Connect Snowflake"
-  question: "Provision Snowflake OIDC resources?"
-  options:
-    - label: "Yes, provision"
-    - label: "Show setup.sql first"
-    - label: "Stop here"
-```
+Also read and display `$PROJECT_NAME/snowflake/setup.sql` with variables substituted
+so the user can review the exact SQL before confirming.
 
-If "Show setup.sql first": read and display `$PROJECT_NAME/snowflake/setup.sql`, then re-ask.
-
-Execute:
+Call `exit_plan_mode`. Then execute directly:
 ```bash
 snow sql -f "$PROJECT_NAME/snowflake/setup.sql" \
   -D "PREFIX=$PREFIX" \

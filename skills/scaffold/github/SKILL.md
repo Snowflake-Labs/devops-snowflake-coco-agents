@@ -14,9 +14,8 @@ description: >
 ⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
 content (Why this matters, What we'll do, resource tables, command previews).
 Call `exit_plan_mode` immediately after the preview — the plan mode confirmation
-IS the single execute gate. After `exit_plan_mode`, execute directly without
-asking again. Only steps with genuine branching options (e.g. "Show template
-first", "Show setup.sql first") keep a post-exit question.
+IS the single execute gate. After `exit_plan_mode`, execute directly.
+Template previews and setup SQL are shown inside plan mode by default.
 
 ## Step Order
 
@@ -256,22 +255,13 @@ Creates: $REPO_PATH  ($REPO_VISIBILITY, from https://github.com/Snowflake-Labs/g
 Clones:  ./$REPO_NAME
 ```
 
-Call `exit_plan_mode`. Then ask:
+Also run to show the template structure:
+```bash
+gh repo view https://github.com/Snowflake-Labs/github-coco-agent
 ```
-ask_user_question:
-  header: "Create Project"
-  question: "Create repo $REPO_PATH from the github-coco-agent template?"
-  options:
-    - label: "Create and clone"
-    - label: "Show me the template first"
-      description: "Preview https://github.com/Snowflake-Labs/github-coco-agent"
-    - label: "Abort"
-```
+Display the description and file tree so the user can review before confirming.
 
-If "Show me the template first": run `gh repo view https://github.com/Snowflake-Labs/github-coco-agent`
-and display the description + file tree, then re-ask.
-
-Execute:
+Call `exit_plan_mode`. Then execute directly:
 ```bash
 gh repo create "$REPO_PATH" \
   --template https://github.com/Snowflake-Labs/github-coco-agent \
@@ -399,20 +389,10 @@ Expected: `false`. If `true`:
 | Auth | `TYPE = SERVICE`, `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://token.actions.githubusercontent.com)` |
 | Subject | `repo:$REPO_PATH:ref:refs/heads/main` |
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Connect Snowflake"
-  question: "Provision Snowflake OIDC resources?"
-  options:
-    - label: "Yes, provision"
-    - label: "Show setup.sql first"
-    - label: "Stop here"
-```
+Also read and display `$REPO_NAME/snowflake/setup.sql` with variables substituted
+so the user can review the exact SQL before confirming.
 
-If "Show setup.sql first": read and display `$REPO_NAME/snowflake/setup.sql`, then re-ask.
-
-Execute:
+Call `exit_plan_mode`. Then execute directly:
 ```bash
 snow sql -f "$REPO_NAME/snowflake/setup.sql" \
   -D "PREFIX=$PREFIX" \
