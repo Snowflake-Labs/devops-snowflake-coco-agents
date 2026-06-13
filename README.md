@@ -155,9 +155,9 @@ Type any of these in the **chat panel** inside CoCo or Claude Code.
 | CoCo | Claude Code | What it does |
 |------|-------------|--------------|
 | `$devops-coco-agents:idd` | `/idd` | Choose IDD tool interactively |
-| `$devops-coco-agents:idd/evaluate-prompt` | `/idd/evaluate-prompt` | Score a prompt on IDD dimensions |
-| `$devops-coco-agents:idd/rewrite-prompt` | `/idd/rewrite-prompt` | Guided IDD rewrite |
-| `$devops-coco-agents:idd/measure-icr` | `/idd/measure-icr` | Measure Intent Compression Ratio |
+| `$devops-coco-agents:idd-evaluate-prompt` | `/idd-evaluate-prompt` | Score a prompt on IDD dimensions |
+| `$devops-coco-agents:idd-rewrite-prompt` | `/idd-rewrite-prompt` | Guided IDD rewrite |
+| `$devops-coco-agents:idd-measure-icr` | `/idd-measure-icr` | Measure Intent Compression Ratio |
 
 ---
 

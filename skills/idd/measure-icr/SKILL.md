@@ -1,5 +1,5 @@
 ---
-name: idd/measure-icr
+name: idd-measure-icr
 description: >
   Calculate the Intent Compression Ratio (ICR) for a workflow, script, or
   CI/CD pipeline. Counts total operations vs intent expressions and classifies

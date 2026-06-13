@@ -42,9 +42,9 @@ Reference: [Kamesh's IDD Blog Series](https://blogs.kameshs.dev)
 
 | Intent | Triggers | Load |
 |---|---|---|
-| Audit a prompt | "evaluate", "audit", "is this IDD", "review my prompt" | `idd/evaluate-prompt/SKILL.md` |
-| Rewrite a prompt | "rewrite", "improve prompt", "apply IDD to", "fix my prompt" | `idd/rewrite-prompt/SKILL.md` |
-| Measure ICR | "measure ICR", "what is ICR", "calculate ICR", "how much compression" | `idd/measure-icr/SKILL.md` |
+| Audit a prompt | "evaluate", "audit", "is this IDD", "review my prompt" | `idd-evaluate-prompt/SKILL.md` |
+| Rewrite a prompt | "rewrite", "improve prompt", "apply IDD to", "fix my prompt" | `idd-rewrite-prompt/SKILL.md` |
+| Measure ICR | "measure ICR", "what is ICR", "calculate ICR", "how much compression" | `idd-measure-icr/SKILL.md` |
 
 If intent is ambiguous, ask:
 
@@ -65,7 +65,7 @@ ask_user_question:
 
 ```
 $devops-coco-agents:idd                   → ask intent, route to sub-skill
-$devops-coco-agents:idd/evaluate-prompt   → load evaluate-prompt directly
-$devops-coco-agents:idd/rewrite-prompt    → load rewrite-prompt directly
-$devops-coco-agents:idd/measure-icr       → load measure-icr directly
+$devops-coco-agents:idd-evaluate-prompt   → load evaluate-prompt directly
+$devops-coco-agents:idd-rewrite-prompt    → load rewrite-prompt directly
+$devops-coco-agents:idd-measure-icr       → load measure-icr directly
 ```

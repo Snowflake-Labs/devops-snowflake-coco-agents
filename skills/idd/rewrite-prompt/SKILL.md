@@ -1,5 +1,5 @@
 ---
-name: idd/rewrite-prompt
+name: idd-rewrite-prompt
 description: >
   Guided rewrite of a prompt using the IDD Goal/Requirements/Constraints/Output
   structure. Collects each section interactively, generates the rewritten prompt,

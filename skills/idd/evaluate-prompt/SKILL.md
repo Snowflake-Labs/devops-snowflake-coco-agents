@@ -1,5 +1,5 @@
 ---
-name: idd/evaluate-prompt
+name: idd-evaluate-prompt
 description: >
   Audit an existing prompt for IDD alignment. Scores it across four dimensions
   (Goal, Requirements, Constraints, Output), identifies gaps, and offers to

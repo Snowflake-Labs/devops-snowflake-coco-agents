@@ -14,6 +14,6 @@ and for applying Intent-Driven Development (IDD) principles to prompts and workf
 ### IDD
 
 - `/idd`                   — IDD audit, rewrite, or ICR measurement
-- `/idd/evaluate-prompt`   — Audit a prompt for IDD alignment (Goal/Requirements/Constraints/Output)
-- `/idd/rewrite-prompt`    — Rewrite a prompt using the IDD structure
-- `/idd/measure-icr`       — Measure the Intent Compression Ratio of a workflow
+- `/idd-evaluate-prompt`   — Audit a prompt for IDD alignment (Goal/Requirements/Constraints/Output)
+- `/idd-rewrite-prompt`    — Rewrite a prompt using the IDD structure
+- `/idd-measure-icr`       — Measure the Intent Compression Ratio of a workflow

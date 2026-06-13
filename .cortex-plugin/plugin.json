@@ -24,15 +24,15 @@
             "path": "skills/idd/SKILL.md"
         },
         {
-            "name": "idd/evaluate-prompt",
+            "name": "idd-evaluate-prompt",
             "path": "skills/idd/evaluate-prompt/SKILL.md"
         },
         {
-            "name": "idd/rewrite-prompt",
+            "name": "idd-rewrite-prompt",
             "path": "skills/idd/rewrite-prompt/SKILL.md"
         },
         {
-            "name": "idd/measure-icr",
+            "name": "idd-measure-icr",
             "path": "skills/idd/measure-icr/SKILL.md"
         }
     ]
