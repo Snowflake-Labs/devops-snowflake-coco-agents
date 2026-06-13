@@ -286,8 +286,8 @@ ask_user_question:
   header: "Beat 4 done"
   question: "Variables set. Want to test the workflow with a sample app?"
   options:
-    - label: "Yes, push demo app and watch the loop"
-      description: "Copies a 3-issue Python app into demo/, enables pipelines, commits and pushes"
+    - label: "Yes, run smoke test and watch the loop"
+      description: "Copies a 3-issue Python app into demo/ (CI-watched folder), enables pipelines, commits as revertable test commit and pushes"
     - label: "No, I'll push my own code later"
       description: "Re-enable pipelines with: glab api projects/$ENCODED_PATH -X PUT -F builds_access_level=enabled"
     - label: "Stop here"
@@ -295,20 +295,19 @@ ask_user_question:
 
 ---
 
-## Beat 5 — Demo test (optional)
+## Beat 5 — Smoke test (optional)
 
-Only execute if user chose "Yes, push demo app" in Beat 4.
+Only execute if user chose "Yes, run smoke test" in Beat 4.
 
 **What I'll do:**
-Copy the sample app (3 intentional issues) into `demo/`, enable pipelines,
-commit and push. The scan-code job will trigger automatically.
+Copy the smoke-test app (3 intentional issues) into `demo/` (the CI-watched folder),
+enable pipelines, commit as a revertable test commit, and push.
+The scan-code job will trigger automatically.
 
 **Step 1 — Copy templates:**
-Read from `skills/scaffold/templates/` and write to `$PROJECT_NAME/demo/`:
-- `skills/scaffold/templates/app.py` → `$PROJECT_NAME/demo/app.py`
-- `skills/scaffold/templates/pyproject.toml` → `$PROJECT_NAME/demo/pyproject.toml`
-- `skills/scaffold/templates/tests/__init__.py` → `$PROJECT_NAME/demo/tests/__init__.py`
-- `skills/scaffold/templates/tests/test_app.py` → `$PROJECT_NAME/demo/tests/test_app.py`
+Read `skills/scaffold/references/smoke-test.md` for the full template description
+and copy instructions, then write the files from `skills/scaffold/templates/smoke-test/`
+to `$PROJECT_NAME/demo/`.
 
 **Step 2 — Enable pipelines:**
 ```bash
@@ -319,8 +318,13 @@ glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
 ```bash
 cd "$PROJECT_NAME"
 git add demo/
-git commit -m "feat(demo): add intentional-issue app for scan/fix workflow"
+git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
+```
+
+⚠️ This is a revertable test commit. Once the loop has validated, clean up with:
+```bash
+git revert HEAD --no-edit && git push
 ```
 
 **Step 4 — Trigger pipeline and show URL:**
@@ -330,13 +334,8 @@ echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
 ```
 
 **What's happening:**
-> The `scan-code` job reads `demo/app.py` and creates `[coco-agent]` issues for:
-> 1. Hardcoded schema (`SCHEMA = "PUBLIC"` — should use env var)
-> 2. Password auth — should use `WORKLOAD_IDENTITY` or `externalbrowser`
-> 3. SQL injection — f-string in `cur.execute()`, should use parameterized query
->
-> Each issue triggers the `coco-agent` fix job via the GitLab Duo Agent Platform.
-> Cortex applies the minimal fix, opens a branch, and creates an MR.
+See `skills/scaffold/references/smoke-test.md` for the full explanation of what
+the templates contain, what issues Cortex will find, and how to interpret results.
 
 ⚠️ MANDATORY pause (repeatable until satisfied):
 ```
