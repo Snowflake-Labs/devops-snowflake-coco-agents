@@ -11,22 +11,22 @@ and [Claude Code](https://claude.ai/code) plugin with two skill sets:
 
 ## How it works
 
-The scaffold skills walk through six guided beats with confirm checkpoints:
+The scaffold skills walk through six guided steps with confirm checkpoints:
 
 ```text
-1. Create repo/project from template
-2. Disable CI/CD until setup is complete
-3. Provision Snowflake OIDC user (setup.sql + verify)
-4. Set GitHub secrets or GitLab CI/CD variables
-5. Optional smoke test → CI scans → issues created → fixes opened as PR/MR
-6. Teardown (optional)
+1. Create Project   — repo/project from template
+2. Hold Before Go-Live — disable CI/CD until setup is complete
+3. Connect Snowflake   — provision OIDC user (setup.sql + verify)
+4. Configure           — set GitHub secrets or GitLab CI/CD variables
+5. Watch the Loop      — optional smoke test → scan → issues → PR/MR
+6. Clean Up            — teardown (optional)
 ```
 
 ---
 
 ## Prerequisites
 
-Install all three tools and authenticate before running any scaffold command.
+Install all required tools and authenticate before running any scaffold command.
 
 ### gh — GitHub CLI
 
@@ -80,6 +80,29 @@ snow connection test           # verify
 ```
 
 > Full install guide: [Snowflake CLI docs](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index)
+
+### python3
+
+Required for URL encoding, YAML patching, and JSON parsing inside the scaffold
+steps. Python 3.9+ works; 3.12 is recommended.
+
+> [!TIP]
+> The plugin ships with a pinned Python version via `uv`. If you have
+> [uv](https://docs.astral.sh/uv/) installed, run `uv sync` in the plugin
+> directory and Python is managed automatically — no separate install needed.
+
+### curl
+
+Used to download the self-hosted runner binary when you opt into local testing.
+Pre-installed on macOS and most Linux distributions.
+
+### git
+
+Required for commits inside scaffolded repos. Pre-installed on most systems.
+
+```bash
+git --version   # verify
+```
 
 ---
 
