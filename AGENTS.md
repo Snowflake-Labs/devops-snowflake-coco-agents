@@ -7,13 +7,14 @@ working in this repository.
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
-```
+```text
 <type>(<scope>): <short description>
 ```
 
 Common types: `feat`, `fix`, `chore`, `docs`, `ci`, `refactor`
 
 Examples:
+
 - `feat(scaffold): add teardown sub-skill`
 - `fix(gitlab): correct OIDC subject format`
 - `ci: update yamllint pre-commit hook`
