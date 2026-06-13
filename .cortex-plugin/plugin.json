@@ -12,11 +12,11 @@
             "path": "skills/scaffold/SKILL.md"
         },
         {
-            "name": "scaffold/github",
+            "name": "scaffold-for-github",
             "path": "skills/scaffold/github/SKILL.md"
         },
         {
-            "name": "scaffold/gitlab",
+            "name": "scaffold-for-gitlab",
             "path": "skills/scaffold/gitlab/SKILL.md"
         }
     ]

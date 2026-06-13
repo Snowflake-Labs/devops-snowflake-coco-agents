@@ -1,7 +1,9 @@
-# devops-cortex-agents
+# devops-coco-agents
 
 Plugin for scaffolding CoCo agent projects on GitHub Actions or GitLab CI.
 
 ## Available Commands
 
-- `/scaffold` — Guided scaffold from the github-coco-agent or gitlab-coco-agent template
+- `/scaffold`              — Choose platform and scaffold (GitHub or GitLab)
+- `/scaffold-for-github`   — Scaffold a GitHub Actions CoCo agent project
+- `/scaffold-for-gitlab`   — Scaffold a GitLab CI CoCo agent project

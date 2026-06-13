@@ -59,11 +59,13 @@ claude plugin validate ./devops-snowflake-coco-agents
 From the chat panel:
 
 ```
-$scaffold github    # guided GitHub scaffold   (CoCo)
-$scaffold gitlab    # guided GitLab scaffold   (CoCo)
-$scaffold           # choose platform interactively
+$devops-coco-agents:scaffold              # choose platform interactively  (CoCo)
+$devops-coco-agents:scaffold-for-github   # GitHub Actions scaffold         (CoCo)
+$devops-coco-agents:scaffold-for-gitlab   # GitLab CI scaffold              (CoCo)
 
-/scaffold           # guided scaffold          (Claude Code)
+/scaffold              # Claude Code — choose platform
+/scaffold-for-github   # Claude Code — GitHub Actions
+/scaffold-for-gitlab   # Claude Code — GitLab CI
 ```
 
 ## Quick Start

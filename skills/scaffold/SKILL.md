@@ -18,8 +18,8 @@ set up the Snowflake OIDC integration, or run the scan->issue->fix automation lo
 
 | Intent | Triggers | Action |
 |---|---|---|
-| GitHub | "github", "gh", "Actions", "GitHub" | Load `scaffold/github/SKILL.md` |
-| GitLab | "gitlab", "glab", "CI", "GitLab" | Load `scaffold/gitlab/SKILL.md` |
+| GitHub | "github", "gh", "Actions", "GitHub" | Load `skills/scaffold/github/SKILL.md` |
+| GitLab | "gitlab", "glab", "CI", "GitLab" | Load `skills/scaffold/gitlab/SKILL.md` |
 
 If the platform is not clear from context, ask first:
 
@@ -39,21 +39,21 @@ Then load the chosen sub-skill.
 ## Shorthand Invocations
 
 ```
-$scaffold              → ask platform, load sub-skill
-$scaffold github       → load .cortex/skills/scaffold/github/SKILL.md directly
-$scaffold gitlab       → load .cortex/skills/scaffold/gitlab/SKILL.md directly
+$devops-coco-agents:scaffold              → ask platform, load sub-skill
+$devops-coco-agents:scaffold-for-github   → load skills/scaffold/github/SKILL.md directly
+$devops-coco-agents:scaffold-for-gitlab   → load skills/scaffold/gitlab/SKILL.md directly
 ```
 
 ## What This Skill Does
 
 ```
-cortex skill guides you through:
-    ├── gh/glab repo create --template <https://github.com/...>
-    ├── snow sql setup.sql   (provisions Snowflake OIDC resources)
-    ├── gh secret set / glab variable set
-    └── trigger first scan pipeline
-            └── scan finds bugs → opens [coco-agent] issues
-                    └── fix pipeline auto-fixes each → opens PR/MR
+prereq checks (gh/glab auth + snow connection test)
+    └── Beat 1: scaffold repo/project from template
+    └── Beat 2: disable Actions/pipelines until setup is complete
+    └── Beat 3: snow sql setup.sql + DESC USER verify
+    └── Beat 4: set GitHub secrets / GitLab CI/CD variables
+    └── Beat 5 (optional): copy demo templates + enable CI + push → watch scan/fix loop
+    └── Beat 6 (optional): teardown Snowflake resources + delete repo/project
 ```
 
 ## Prerequisites
