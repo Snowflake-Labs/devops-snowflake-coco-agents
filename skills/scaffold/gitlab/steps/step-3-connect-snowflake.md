@@ -1,14 +1,9 @@
 # Step 3: Connect Snowflake
 
 > Part of the GitLab scaffold skill. Load when executing Step 3.
-> For SKILL_DIR resolution, see `references/manifest.md`.
 
+Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
 ```bash
-SKILL_DIR=$(find ~/.snowflake/cortex/plugins -name "manifest_ops.py" \
-  -path "*/devops-coco-agents/skills/scaffold/scripts/*" 2>/dev/null \
-  | head -1 | xargs dirname | xargs dirname 2>/dev/null)
-[ -z "$SKILL_DIR" ] && SKILL_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/scaffold"
-MANIFEST_OPS="$SKILL_DIR/scripts/manifest_ops.py"
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 ```
 
@@ -25,12 +20,8 @@ If not `"disabled"`:
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
 **Why this matters** (Guided mode only):
-> WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
-> GitLab proves the job's identity; Snowflake verifies the issuer and subject
-> claim. No secret is ever stored.
->
-> `SNOWFLAKE.CORTEX_USER` database role is also granted — unlocks Cortex AI
-> endpoints. Without it, every `cortex exec` call returns 403 Forbidden.
+> See `references/manifest.md` (## Connect Snowflake — OIDC Explanation).
+> GitHub: "the Actions runner proves its identity". GitLab: "the CI job proves its identity".
 
 **What we'll do**
 

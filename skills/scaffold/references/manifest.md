@@ -23,6 +23,25 @@ fi
 MANIFEST_OPS="$SKILL_DIR/scripts/manifest_ops.py"
 ```
 
+Step files reference this section instead of inlining the block. After resolving
+SKILL_DIR, each step also sets the platform-specific manifest path:
+- GitHub: `MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"`
+- GitLab: `MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"`
+
+---
+
+## Connect Snowflake — OIDC Explanation
+
+Shared "Why this matters" block for Step 3. The only difference between platforms
+is the identity token source (runner identity vs CI job identity).
+
+> WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
+> **{GitHub: the Actions runner / GitLab: the CI job}** proves its identity;
+> Snowflake verifies the issuer and subject claim. No secret is ever stored.
+>
+> `SNOWFLAKE.CORTEX_USER` database role is also granted — unlocks Cortex AI
+> endpoints. Without it, every `cortex exec` call returns 403 Forbidden.
+
 ---
 
 ## Manifest Schema

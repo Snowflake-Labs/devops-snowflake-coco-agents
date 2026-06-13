@@ -1,14 +1,9 @@
 # Step 2: Hold Before Go-Live
 
 > Part of the GitLab scaffold skill. Load when executing Step 2.
-> For SKILL_DIR resolution, see `references/manifest.md`.
 
+Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
 ```bash
-SKILL_DIR=$(find ~/.snowflake/cortex/plugins -name "manifest_ops.py" \
-  -path "*/devops-coco-agents/skills/scaffold/scripts/*" 2>/dev/null \
-  | head -1 | xargs dirname | xargs dirname 2>/dev/null)
-[ -z "$SKILL_DIR" ] && SKILL_DIR="$(git rev-parse --show-toplevel 2>/dev/null)/skills/scaffold"
-MANIFEST_OPS="$SKILL_DIR/scripts/manifest_ops.py"
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 ```
 
