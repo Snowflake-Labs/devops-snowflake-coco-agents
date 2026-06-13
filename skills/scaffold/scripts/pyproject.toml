@@ -1,0 +1,10 @@
+[project]
+name = "scaffold-manifest-ops"
+version = "0.1.0"
+description = "Manifest operations for the devops-coco-agents scaffold skill"
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
