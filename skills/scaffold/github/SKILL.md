@@ -14,17 +14,6 @@ description: >
 ⚠️ MANDATORY: Execute beats 1–6 in order. Never skip or reorder.
 Each beat builds on the previous — jumping ahead leaves the repo in a broken state.
 
-## Mode Behaviour Reference
-
-`$SKILL_MODE` is set at the start (default: guided).
-
-- **guided** — show "Why this matters" before each plan preview
-- **standard** — skip "Why this matters"; show plan preview and confirm as normal
-
-Beat-by-beat confirm gates fire in both modes.
-Beat 6 teardown always shows a final confirm regardless of mode.
-"What we did" is always shown in both modes.
-
 ## Forbidden Actions
 
 ⚠️ FORBIDDEN:
@@ -68,41 +57,18 @@ ask_user_question:
     - label: "Abort"
 ```
 
-## Run Mode
+## Run Mode and Repo Name
 
-Ask once, before collecting any inputs:
-
-```
-ask_user_question:
-  header: "Run mode"
-  question: "How would you like to run the scaffold?"
-  defaultAnswer: "Guided — explanations + beat-by-beat confirm"
-  options:
-    - label: "Guided — explanations + beat-by-beat confirm"
-      description: "Explains each concept before acting. Good for first-timers."
-    - label: "Standard — beat-by-beat confirm, skip explanations"
-      description: "Shows what will happen and asks before each beat."
-```
-
-Set `$SKILL_MODE = guided` or `$SKILL_MODE = standard` from the answer.
+Read `skills/scaffold/references/run-mode.md` and follow Steps A and B before
+collecting any other inputs. Set `$SKILL_MODE` and prepare the repo name
+`defaultValue` from the petname output before proceeding to Stopping Points.
 
 ## Stopping Points
 
 Collect all three values before Beat 1. Auto-detect where possible.
 
-1. **Target repo** (`REPO_PATH`) — detect GitHub login:
-   ```bash
-   gh api user --jq .login
-   ```
-   You are a techy petname generator for a git repository. Generate a name using
-   the pattern `<adjective>-<noun>` where adjective is a personality adjective
-   (fuzzy, blazing, sleepy, eager, cranky, atomic, humble, jolly, bold, wired, quirky,
-   brave, nimble, swift) and noun is a technical term (daemon, webhook, pipeline, cron,
-   lambda, socket, cache, pod, flux, heap, stack, diff, patch, runner, sidecar, proxy,
-   relay, shard, broker). Examples: `blazing-daemon`, `fuzzy-lambda`, `sleepy-sidecar`,
-   `bold-webhook`, `nimble-broker`.
-
-   Then ask:
+1. **Target repo** (`REPO_PATH`) — detect GitHub login with `gh api user --jq .login`.
+   Use the petname generated in Step B of `run-mode.md` as the `defaultValue`:
    ```
    ask_user_question:
      header: "New repo"

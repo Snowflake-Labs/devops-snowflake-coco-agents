@@ -56,105 +56,138 @@ envsubst < .cortex/prompts/fix.md \
 
 ---
 
-## Option 2 — GitLab: local `gitlab-runner` (no pipeline changes needed)
+## Option 2 — GitLab: project-local registered runner (shell executor)
 
-**What this tests:** The full `.gitlab-ci.yml` job script — same env var handling,
-same Docker image, same shell logic as real CI.
+**What this tests:** The full `.gitlab-ci.yml` pipeline — real GitLab OIDC token
+issuance, `include:` directives processed, `rules:` evaluated. Identical to what
+runs on shared runners. The shell executor uses the local `cortex` binary on PATH
+directly — no Docker image build needed.
 
-**Auth:** The `.gitlab-ci.yml` already supports a `SNOWFLAKE_PAT` env-var override
-for local testing (set `SNOWFLAKE_PAT` to bypass OIDC). This is intentional in
-the GitLab template and pre-dates the changes in this plugin.
+**Auth:** GitLab issues a real OIDC token to registered runners. No PAT is needed
+if Beat 3 (Snowflake OIDC user) is complete.
+
+**Note:** The scaffold skill (Beat 4) can set this up for you automatically.
+These steps are the manual equivalent.
 
 ### Setup
 
 ```bash
-brew install gitlab-runner   # macOS; also available via apt/dnf
+# Download the runner binary into the project
+mkdir -p .gitlab/runner
+RUNNER_VERSION=$(curl -s \
+  "https://gitlab.com/api/v4/projects/gitlab-org%2Fgitlab-runner/releases/permalink/latest" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -LsS \
+  "https://gitlab-runner-downloads.s3.amazonaws.com/v${RUNNER_VERSION}/binaries/gitlab-runner-darwin-arm64" \
+  -o .gitlab/runner/gitlab-runner
+chmod +x .gitlab/runner/gitlab-runner
+echo '.gitlab/runner/' >> .gitignore
 
-# Build the cortex-code-agent image locally
-cd /path/to/your-gitlab-project
-docker build -t cortex-code-agent:latest .
+# Create a runner token via GitLab API
+ENCODED_PATH=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1],safe=''))" "$PROJECT_PATH")
+PROJECT_ID=$(glab api "projects/$ENCODED_PATH" --jq .id)
+RUNNER_TOKEN=$(glab api "user/runners" -X POST \
+  --field "runner_type=project_type" \
+  --field "project_id=$PROJECT_ID" \
+  --field "tag_list=local" \
+  --field "run_untagged=false" \
+  --field "description=local-mac" \
+  --jq .token)
+
+# Register with project-local config
+.gitlab/runner/gitlab-runner register \
+  --config .gitlab/runner/config.toml \
+  --url https://gitlab.com \
+  --token "$RUNNER_TOKEN" \
+  --executor shell \
+  --non-interactive
 ```
 
-### Run the scan job
+### Patch pipeline to use the local runner
 
 ```bash
-gitlab-runner exec docker scan-code \
-  --env SNOWFLAKE_ACCOUNT=xy12345.us-east-1 \
-  --env SNOWFLAKE_USER=DEMO_GITLAB_COCO_AGENT_USER \
-  --env SNOWFLAKE_WAREHOUSE=DEMO_GITLAB_COCO_AGENT_WH \
-  --env SNOWFLAKE_ROLE=DEMO_GITLAB_COCO_AGENT_ROLE \
-  --env SNOWFLAKE_PAT=v2:... \
-  --env GITLAB_TOKEN_coco=glpat-... \
-  --env GITLAB_HOST=gitlab.com \
-  --env CI_PROJECT_PATH=mygroup/my-coco-agent \
-  --docker-image cortex-code-agent:latest
+python3 - << 'PYEOF'
+import re
+content = open(".gitlab-ci.yml").read()
+for job in ["scan-code", "coco-agent"]:
+    content = re.sub(rf"^({job}:)", rf"\1\n  tags: [local]", content, flags=re.MULTILINE)
+open(".gitlab-ci.yml", "w").write(content)
+print("Patched: tags: [local] added")
+PYEOF
+git add .gitlab-ci.yml && git commit -m "ci: use self-hosted local runner for testing [skip ci]"
+git push
 ```
-
-> `gitlab-runner exec docker` is deprecated since GitLab 16+ but still works for
-> local testing.
-
----
-
-## Option 3 — GitHub: self-hosted runner on your Mac
-
-**What this tests:** The full `cortex-scan.yml` / `cortex-fix.yml` workflow YAML,
-including real GitHub OIDC token issuance. This is the most complete test because
-it runs the actual workflow — not a simulation.
-
-**Auth:** GitHub issues a real OIDC token to the self-hosted runner. The
-`snowflake-cli-action` step exchanges it for a Snowflake session exactly as it
-would in production. No PAT is needed.
-
-**Requirement:** Beat 3 (Snowflake OIDC user provisioning) must be complete.
-
-### Register your Mac as a self-hosted runner
-
-```bash
-# Via gh CLI (run from inside your scaffolded repo):
-gh api "repos/$REPO_PATH/actions/runners/registration-token" \
-  -X POST -q .token | xargs -I{} \
-  ~/actions-runner/config.sh \
-    --url "https://github.com/$REPO_PATH" \
-    --token {} \
-    --labels "self-hosted,macOS" \
-    --unattended
-
-# Or follow the UI path:
-# Settings → Actions → Runners → New self-hosted runner → macOS
-```
-
-If you don't have the runner package yet:
-```bash
-mkdir -p ~/actions-runner && cd ~/actions-runner
-curl -LsS https://github.com/actions/runner/releases/latest/download/actions-runner-osx-arm64-2.321.0.tar.gz | tar xz
-```
-Check https://github.com/actions/runner/releases for the current version.
 
 ### Start the runner
 
 ```bash
-~/actions-runner/run.sh
+.gitlab/runner/gitlab-runner run --config .gitlab/runner/config.toml
 ```
 
-Keep this running in a terminal while you test.
+Keep this running in a terminal. Push to `demo/` or push the pipeline trigger commit
+and the `scan-code` job will be picked up by the local runner.
 
-### Trigger the scan workflow
-
-Push any change to `demo/` on `main`:
+### Check results
 
 ```bash
-cd /path/to/your-scaffolded-repo
-git commit --allow-empty -m "test(smoke): trigger local scan run"
+glab issue list --label coco-agent
+glab mr list --state opened
+```
+
+> **Legacy fallback:** `gitlab-runner exec docker scan-code --env ... --docker-image ...`
+> still works for a quick single-job script check (no `include:` processing, no OIDC)
+> but is deprecated since GitLab 16+.
+
+---
+
+## Option 3 — GitHub: project-local self-hosted runner
+
+**What this tests:** The full `cortex-scan.yml` / `cortex-fix.yml` workflow YAML,
+including real GitHub OIDC token issuance.
+
+**Auth:** GitHub issues a real OIDC token to the self-hosted runner.
+`snowflake-cli-action` exchanges it for a Snowflake session. No PAT needed.
+
+**Requirement:** Beat 3 (Snowflake OIDC user) must be complete.
+
+**Note:** The scaffold skill (Beat 4) sets this up automatically.
+These steps are the manual equivalent.
+
+### Setup
+
+```bash
+mkdir -p .github/runner
+echo '.github/runner/' >> .gitignore
+RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -LsS \
+  "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-osx-arm64-${RUNNER_VERSION}.tar.gz" \
+  | tar xz -C .github/runner
+RUNNER_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/registration-token" -X POST -q .token)
+.github/runner/config.sh \
+  --url "https://github.com/$REPO_PATH" \
+  --token "$RUNNER_TOKEN" \
+  --labels "self-hosted,local" \
+  --unattended
+```
+
+### Patch workflows to use the local runner
+
+```bash
+sed -i '' 's/runs-on: ubuntu-latest/runs-on: [self-hosted, local]/g' \
+  .github/workflows/cortex-scan.yml \
+  .github/workflows/cortex-fix.yml
+git add .github/workflows/ && git commit -m "ci(workflows): use self-hosted local runner [skip ci]"
 git push
 ```
 
-Or trigger manually:
+### Start the runner
+
 ```bash
-gh workflow run cortex-scan.yml --ref main
+.github/runner/run.sh
 ```
 
-The workflow runs on your Mac. The `Install cortex` step is skipped because the
-local binary already has `exec`. Issues appear in the GitHub repo as normal.
+Keep this running. Push to `demo/` and the scan workflow will be picked up locally.
 
 ### Check results
 
@@ -170,6 +203,6 @@ gh pr list   --repo "$REPO_PATH" --state open
 | Goal | Use |
 |------|-----|
 | Prove CoCo logic works, fastest feedback | Option 1 |
-| Test full GitLab pipeline scripts locally | Option 2 |
-| Test real GitHub workflow YAML with OIDC end-to-end | Option 3 |
+| Test full GitLab pipeline with real OIDC | Option 2 |
+| Test real GitHub workflow YAML with OIDC | Option 3 |
 | Beat 3 not done yet | Option 1 (no OIDC required) |
