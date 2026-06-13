@@ -1,0 +1,23 @@
+{
+    "name": "devops-coco-agents",
+    "version": "0.1.0",
+    "description": "Scaffold and run the CoCo scan->issue->fix agent loop on GitHub Actions or GitLab CI. Provisions Snowflake OIDC resources, sets secrets/variables, and triggers the automation end-to-end.",
+    "author": "Snowflake",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/Snowflake-Labs/devops-snowflake-coco-agents.git",
+    "homepage": "https://github.com/Snowflake-Labs/devops-snowflake-coco-agents",
+    "skills": [
+        {
+            "name": "scaffold",
+            "path": "skills/scaffold/SKILL.md"
+        },
+        {
+            "name": "scaffold/github",
+            "path": "skills/scaffold/github/SKILL.md"
+        },
+        {
+            "name": "scaffold/gitlab",
+            "path": "skills/scaffold/gitlab/SKILL.md"
+        }
+    ]
+}

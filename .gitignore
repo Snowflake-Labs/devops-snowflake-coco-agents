@@ -1,0 +1,5 @@
+coco-*/
+.snowflake/
+.DS_Store
+*.code-workspace
+.cortex/plans/
