@@ -30,6 +30,21 @@ Each step builds on the previous — jumping ahead leaves the repo in a broken s
 - Do not set GitHub secrets other than the three listed in Configure.
 - Do not enable Actions before Configure is complete.
 
+## Sensitive Values
+
+⚠️ NEVER echo real values for these variables — use the variable name or placeholder:
+
+| Variable | Mask as | Notes |
+|----------|---------|-------|
+| `SNOWFLAKE_ACCOUNT` | `<account>` | Show in plan previews as placeholder only |
+| `RUNNER_TOKEN` | `****` | Short-lived; don't show even briefly |
+| `REMOVE_TOKEN` | `****` | Short-lived; don't show even briefly |
+
+Rules:
+- In **plan mode previews** and **What we'll do** tables: use the variable name (`$SNOWFLAKE_ACCOUNT`) or `<placeholder>`, never the resolved value.
+- In **What we did** summaries: confirm the secret was set (e.g. "✓ SNOWFLAKE_ACCOUNT secret set") — never print the value.
+- When capturing output that may contain a token (e.g. `gh api .../registration-token`), assign to a shell variable immediately and do not print it in conversation.
+
 ## Prerequisites Check
 
 Run both checks before collecting any inputs. If either fails, stop and help

@@ -30,6 +30,23 @@ Each step builds on the previous — jumping ahead leaves the project in a broke
 - Do not set CI/CD variables other than the four listed in Configure.
 - Do not enable pipelines before Configure is complete.
 
+## Sensitive Values
+
+⚠️ NEVER echo real values for these variables — use the variable name or placeholder:
+
+| Variable | Mask as | Notes |
+|----------|---------|-------|
+| `SNOWFLAKE_ACCOUNT` | `<account>` | Show in plan previews as placeholder only |
+| `GITLAB_TOKEN_coco` | `****` | Long-lived PAT — never display after capture |
+| `RUNNER_TOKEN` | `****` | Short-lived; don't show even briefly |
+| `REMOVE_TOKEN` | `****` | Short-lived; don't show even briefly |
+
+Rules:
+- In **plan mode previews** and **What we'll do** tables: use the variable name (`$SNOWFLAKE_ACCOUNT`) or `<placeholder>`, never the resolved value.
+- In **What we did** summaries: confirm the secret was set (e.g. "✓ SNOWFLAKE_ACCOUNT variable set") — never print the value.
+- After the user provides `GITLAB_TOKEN_coco` via `ask_user_question`, store it immediately and never reference the raw value again — treat it as write-only.
+- When capturing output that may contain a token (e.g. runner registration token), assign to a shell variable immediately and do not print it in conversation.
+
 ## Prerequisites Check
 
 Run both checks before collecting any inputs. If either fails, stop and help
@@ -152,10 +169,11 @@ Collect all four values before Create Project.
    ```
    ask_user_question:
      header: "GitLab token"
-     question: "GitLab PAT for the bot service account (needs api + write_repository scope)."
+     question: "GitLab PAT for the bot service account (needs api + write_repository scope). Value will not be echoed back."
      type: text
      defaultValue: ""
    ```
+   Store the answer as `GITLAB_TOKEN_coco`. Per the Sensitive Values rule, never display this value again after capture.
 
 Derive group, project name, and encoded path:
 ```bash
