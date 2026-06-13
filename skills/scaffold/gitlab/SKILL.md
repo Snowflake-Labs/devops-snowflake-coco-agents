@@ -9,6 +9,14 @@ description: >
   $devops-coco-agents:scaffold-for-gitlab directly.
 ---
 
+## Plan Mode Rule
+
+⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
+content (Why this matters, What we'll do, resource tables, command previews).
+Call `exit_plan_mode` immediately after the preview — the `ask_user_question`
+that follows is the single confirm gate. Never present step content or run any
+command without this pattern.
+
 ## Step Order
 
 ⚠️ MANDATORY: Execute steps 1–6 in order. Never skip or reorder.
@@ -191,7 +199,7 @@ If "Use the existing project": clone it and skip to post-step verification.
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Working from a versioned template guarantees every project starts from a
@@ -204,7 +212,7 @@ Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, from https://gitlab.com/kameshsamp
 Clones:  ./$PROJECT_NAME
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Create Project"
@@ -267,7 +275,7 @@ If either fails:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Running pipelines before auth is configured produces failed OIDC exchanges
@@ -280,7 +288,7 @@ Disables:  CI/CD pipelines on $PROJECT_PATH
 Effect:    No jobs fire until Watch the Loop re-enables them
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Hold Before Go-Live"
@@ -331,7 +339,7 @@ Expected: `"disabled"`. If not:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
@@ -353,7 +361,7 @@ Enter plan mode and present:
 | Auth | TYPE = WORKLOAD_IDENTITY, OIDC issuer: https://gitlab.com |
 | Subject | `project_path:$PROJECT_PATH:ref_type:branch:ref:main` |
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Connect Snowflake"
@@ -418,7 +426,7 @@ If empty or error:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Four config values tell the pipeline which Snowflake context to enter and how
@@ -434,7 +442,7 @@ Enter plan mode and present:
 | `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITLAB_COCO_AGENT_WH` | no |
 | `GITLAB_TOKEN_coco` | (provided token) | yes |
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Configure"
@@ -477,7 +485,7 @@ ask_user_question:
 
 If "Yes, install runner inside the repo":
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > A project-local registered runner lets you test the full loop without waiting
@@ -492,7 +500,7 @@ Tag:         local
 Patches:     tags: [local] added to scan-code and coco-agent in .gitlab-ci.yml
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Install runner"
@@ -599,7 +607,7 @@ If 0:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > The smoke-test app contains 3 intentional security and correctness issues.
@@ -614,7 +622,7 @@ Step 3: commit + push  (revertable — git revert HEAD when done)
 Step 4: trigger pipeline + show URL
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Watch the Loop"
@@ -694,7 +702,7 @@ ask_user_question:
 
 If "Keep everything" → stop.
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Resources left running after a demo cost credits. Teardown reverses the setup
@@ -713,7 +721,7 @@ Enter plan mode and present:
   Runner and project: kept
 ```
 
-Exit plan mode, then ask (always fires regardless of mode — destructive and irreversible):
+Call `exit_plan_mode`. Then ask (always fires regardless of mode — destructive and irreversible):
 ```
 ask_user_question:
   header: "Confirm teardown"

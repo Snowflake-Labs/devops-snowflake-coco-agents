@@ -9,6 +9,14 @@ description: >
   $devops-coco-agents:scaffold-for-github directly.
 ---
 
+## Plan Mode Rule
+
+⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
+content (Why this matters, What we'll do, resource tables, command previews).
+Call `exit_plan_mode` immediately after the preview — the `ask_user_question`
+that follows is the single confirm gate. Never present step content or run any
+command without this pattern.
+
 ## Step Order
 
 ⚠️ MANDATORY: Execute steps 1–6 in order. Never skip or reorder.
@@ -192,7 +200,7 @@ If "Use the existing repo": clone it and skip to the post-step verification belo
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Working from a versioned template guarantees every project starts from a
@@ -205,7 +213,7 @@ Creates: $REPO_PATH  ($REPO_VISIBILITY, from https://github.com/Snowflake-Labs/g
 Clones:  ./$REPO_NAME
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Create Project"
@@ -267,7 +275,7 @@ If either fails:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Running workflows before auth is configured produces failed OIDC exchanges
@@ -280,7 +288,7 @@ Disables:  GitHub Actions on $REPO_PATH
 Effect:    No workflows trigger until Watch the Loop re-enables them
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Hold Before Go-Live"
@@ -335,7 +343,7 @@ Expected: `false`. If `true`:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
@@ -357,7 +365,7 @@ Enter plan mode and present:
 | Auth | TYPE = WORKLOAD_IDENTITY, OIDC issuer: https://token.actions.githubusercontent.com |
 | Subject | `repo:$REPO_PATH:ref:refs/heads/main` |
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Connect Snowflake"
@@ -421,7 +429,7 @@ If empty or error:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Three config values (account, role, warehouse) tell the workflow which Snowflake
@@ -436,7 +444,7 @@ Enter plan mode and present:
 | `SNOWFLAKE_ROLE` | `${PREFIX}_GITHUB_COCO_AGENT_ROLE` |
 | `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITHUB_COCO_AGENT_WH` |
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Configure"
@@ -478,7 +486,7 @@ ask_user_question:
 
 If "Yes, install runner inside the repo":
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > A project-local runner lets you test the full loop before committing to
@@ -494,7 +502,7 @@ Patches:    runs-on in cortex-scan.yml and cortex-fix.yml → [self-hosted, loca
 Note:       binary is ~100 MB — download takes a moment
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Install runner"
@@ -580,7 +588,7 @@ If 0:
 
 ---
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > The smoke-test app contains 3 intentional security and correctness issues.
@@ -595,7 +603,7 @@ Step 3: commit + push  (revertable — git revert HEAD when done)
 Step 4: show Actions URL
 ```
 
-Exit plan mode, then ask:
+Call `exit_plan_mode`. Then ask:
 ```
 ask_user_question:
   header: "Watch the Loop"
@@ -678,7 +686,7 @@ ask_user_question:
 
 If "Keep everything" → stop.
 
-Enter plan mode and present:
+⚠️ MANDATORY: call `enter_plan_mode` now. Then present:
 
 **Why this matters** (Guided mode only):
 > Resources left running after a demo cost credits. Teardown reverses the setup
@@ -697,7 +705,7 @@ Enter plan mode and present:
   Runner and repo: kept
 ```
 
-Exit plan mode, then ask (always fires regardless of mode — destructive and irreversible):
+Call `exit_plan_mode`. Then ask (always fires regardless of mode — destructive and irreversible):
 ```
 ask_user_question:
   header: "Confirm teardown"
