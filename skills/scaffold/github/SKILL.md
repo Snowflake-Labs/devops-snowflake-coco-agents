@@ -334,6 +334,7 @@ echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
 **What's happening:**
 See `skills/scaffold/references/smoke-test.md` for the full explanation of what
 the templates contain, what issues Cortex will find, and how to interpret results.
+To run this loop locally without a live Actions runner, see `skills/scaffold/references/local-testing.md`.
 
 ⚠️ MANDATORY pause (repeatable until satisfied):
 ```
