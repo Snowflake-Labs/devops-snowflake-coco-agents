@@ -408,7 +408,7 @@ Expected: `"disabled"`. If not:
 | Role | `${PREFIX}_GITLAB_COCO_AGENT_ROLE` |
 | Warehouse | `${PREFIX}_GITLAB_COCO_AGENT_WH` (XS, auto-suspend 60s) |
 | User | `${PREFIX}_GITLAB_COCO_AGENT_USER` |
-| Auth | TYPE = WORKLOAD_IDENTITY, OIDC issuer: https://gitlab.com |
+| Auth | `TYPE = SERVICE`, `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://gitlab.com)` |
 | Subject | `project_path:$PROJECT_PATH:ref_type:branch:ref:main` |
 
 Call `exit_plan_mode`. Then ask:
@@ -448,7 +448,7 @@ snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITLAB_COCO_AGENT_WH'" --format jso
 If either returns empty rows, the setup SQL did not complete — re-run this step.
 
 ### What we did
-- Role, warehouse, and WORKLOAD_IDENTITY user created and verified
+- Role, warehouse, and `SERVICE` user with `WORKLOAD_IDENTITY` OIDC config created and verified
 - Subject claim bound to `project_path:$PROJECT_PATH:ref_type:branch:ref:main`
 
 ⚠️ MANDATORY pause:

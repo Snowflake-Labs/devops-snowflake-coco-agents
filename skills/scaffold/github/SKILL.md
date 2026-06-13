@@ -405,7 +405,7 @@ Expected: `false`. If `true`:
 | Role | `${PREFIX}_GITHUB_COCO_AGENT_ROLE` |
 | Warehouse | `${PREFIX}_GITHUB_COCO_AGENT_WH` (XS, auto-suspend 60s) |
 | User | `${PREFIX}_GITHUB_COCO_AGENT_USER` |
-| Auth | TYPE = WORKLOAD_IDENTITY, OIDC issuer: https://token.actions.githubusercontent.com |
+| Auth | `TYPE = SERVICE`, `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://token.actions.githubusercontent.com)` |
 | Subject | `repo:$REPO_PATH:ref:refs/heads/main` |
 
 Call `exit_plan_mode`. Then ask:
@@ -444,7 +444,7 @@ snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITHUB_COCO_AGENT_WH'" --format jso
 If either returns empty rows, the setup SQL did not complete — re-run this step.
 
 ### What we did
-- Role, warehouse, and WORKLOAD_IDENTITY user created and verified
+- Role, warehouse, and `SERVICE` user with `WORKLOAD_IDENTITY` OIDC config created and verified
 - Subject claim bound to `repo:$REPO_PATH:ref:refs/heads/main`
 
 ⚠️ MANDATORY pause:
