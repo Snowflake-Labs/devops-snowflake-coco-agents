@@ -29,6 +29,24 @@ Examples:
 - Use `enter_plan_mode` + `exit_plan_mode` around each beat's confirmation (single confirm, not multiple raw asks)
 - Three-point beat structure: "What I'll do" → execute → "What we did"
 
+## .agentignore
+
+Template repos ship a `.agentignore` file at the repository root. The scan agent
+reads this before scanning and skips any files or directories matching the patterns.
+
+Syntax follows `.gitignore` rules:
+
+- Lines starting with `#` are comments
+- Blank lines are ignored
+- Glob patterns (`*.pyc`, `__pycache__/`, `vendor/`)
+- Prefix `/` to anchor to repo root; prefix `!` to un-ignore
+
+Default exclusions: Python artifacts (`__pycache__/`, `*.pyc`), virtual environments
+(`.venv/`), build outputs (`dist/`, `build/`), vendored deps (`node_modules/`).
+
+The fix agent does **not** read `.agentignore` — if a bug was found in a file, the
+fix should proceed regardless of scan exclusion rules.
+
 ## Repo References
 
 Always use full HTTPS URLs — never org/repo shorthand:
