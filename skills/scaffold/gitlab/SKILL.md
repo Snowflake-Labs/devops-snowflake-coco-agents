@@ -13,9 +13,10 @@ description: >
 
 ⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
 content (Why this matters, What we'll do, resource tables, command previews).
-Call `exit_plan_mode` immediately after the preview — the `ask_user_question`
-that follows is the single confirm gate. Never present step content or run any
-command without this pattern.
+Call `exit_plan_mode` immediately after the preview — the plan mode confirmation
+IS the single execute gate. After `exit_plan_mode`, execute directly without
+asking again. Only steps with genuine branching options (e.g. "Show setup.sql
+first") keep a post-exit question.
 
 ## Step Order
 
@@ -342,15 +343,7 @@ Verifies:  CI/CD pipelines disabled on $PROJECT_PATH
 Expected:  builds_access_level = "disabled"
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Hold Before Go-Live"
-  question: "Confirm pipelines are disabled on $PROJECT_PATH before proceeding?"
-  options:
-    - label: "Yes, verify and continue"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
 **Verify:**
 ```bash
@@ -492,17 +485,8 @@ If empty or error:
 | `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITLAB_COCO_AGENT_WH` | no |
 | `GITLAB_TOKEN_coco` | (provided token) | yes |
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Configure"
-  question: "Set these four CI/CD variables on $PROJECT_PATH?"
-  options:
-    - label: "Yes, set variables"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
-Execute:
 ```bash
 cd "$PROJECT_NAME"
 glab variable set SNOWFLAKE_ACCOUNT   --value "$SNOWFLAKE_ACCOUNT"   --masked
@@ -550,17 +534,8 @@ Tag:         local
 Patches:     tags: [local] added to scan-code and coco-agent in .gitlab-ci.yml
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Install runner"
-  question: "Install local GitLab runner in $PROJECT_NAME/.gitlab/runner/?"
-  options:
-    - label: "Yes, install"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
-Execute:
 ```bash
 mkdir -p "$PROJECT_NAME/.gitlab/runner"
 echo '.gitlab/runner/' >> "$PROJECT_NAME/.gitignore"
@@ -672,15 +647,7 @@ Step 3: commit + push  (revertable — git revert HEAD when done)
 Step 4: trigger pipeline + show URL
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Watch the Loop"
-  question: "Copy smoke-test app, enable pipelines, and push to trigger the loop?"
-  options:
-    - label: "Yes, run the smoke test"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
 **Step 1 — Copy templates:**
 Read `skills/scaffold/references/smoke-test.md` and write the files from

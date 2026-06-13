@@ -13,9 +13,10 @@ description: >
 
 ⚠️ MANDATORY on every step: call `enter_plan_mode` **before** presenting any
 content (Why this matters, What we'll do, resource tables, command previews).
-Call `exit_plan_mode` immediately after the preview — the `ask_user_question`
-that follows is the single confirm gate. Never present step content or run any
-command without this pattern.
+Call `exit_plan_mode` immediately after the preview — the plan mode confirmation
+IS the single execute gate. After `exit_plan_mode`, execute directly without
+asking again. Only steps with genuine branching options (e.g. "Show template
+first", "Show setup.sql first") keep a post-exit question.
 
 ## Step Order
 
@@ -337,17 +338,7 @@ Verifies:  GitHub Actions disabled on $REPO_PATH
 Expected:  enabled = false
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Hold Before Go-Live"
-  question: "Confirm Actions are disabled on $REPO_PATH before proceeding?"
-  options:
-    - label: "Yes, verify and continue"
-    - label: "Stop here"
-```
-
-**Verify:**
+Call `exit_plan_mode`. Then execute directly:
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
 ```
@@ -487,17 +478,8 @@ If empty or error:
 | `SNOWFLAKE_ROLE` | `${PREFIX}_GITHUB_COCO_AGENT_ROLE` |
 | `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITHUB_COCO_AGENT_WH` |
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Configure"
-  question: "Set these three secrets on $REPO_PATH?"
-  options:
-    - label: "Yes, set secrets"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
-Execute:
 ```bash
 gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT"
 gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "${PREFIX}_GITHUB_COCO_AGENT_ROLE"
@@ -545,17 +527,8 @@ Patches:    runs-on in cortex-scan.yml and cortex-fix.yml → [self-hosted, loca
 Note:       binary is ~100 MB — download takes a moment
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Install runner"
-  question: "Install local runner in $REPO_NAME/.github/runner/?"
-  options:
-    - label: "Yes, install"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
-Execute:
 ```bash
 mkdir -p "$REPO_NAME/.github/runner"
 echo '.github/runner/' >> "$REPO_NAME/.gitignore"
@@ -646,15 +619,7 @@ Step 3: commit + push  (revertable — git revert HEAD when done)
 Step 4: show Actions URL
 ```
 
-Call `exit_plan_mode`. Then ask:
-```
-ask_user_question:
-  header: "Watch the Loop"
-  question: "Copy smoke-test app, enable Actions, and push to trigger the loop?"
-  options:
-    - label: "Yes, run the smoke test"
-    - label: "Stop here"
-```
+Call `exit_plan_mode`. Then execute directly:
 
 **Step 1 — Copy templates:**
 Read `skills/scaffold/references/smoke-test.md` and write the files from
