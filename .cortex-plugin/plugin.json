@@ -18,6 +18,22 @@
         {
             "name": "scaffold-for-gitlab",
             "path": "skills/scaffold/gitlab/SKILL.md"
+        },
+        {
+            "name": "idd",
+            "path": "skills/idd/SKILL.md"
+        },
+        {
+            "name": "idd/evaluate-prompt",
+            "path": "skills/idd/evaluate-prompt/SKILL.md"
+        },
+        {
+            "name": "idd/rewrite-prompt",
+            "path": "skills/idd/rewrite-prompt/SKILL.md"
+        },
+        {
+            "name": "idd/measure-icr",
+            "path": "skills/idd/measure-icr/SKILL.md"
         }
     ]
 }

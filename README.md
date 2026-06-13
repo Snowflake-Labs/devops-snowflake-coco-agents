@@ -59,6 +59,7 @@ claude plugin validate ./devops-snowflake-coco-agents
 From the chat panel:
 
 ```
+# Scaffold
 $devops-coco-agents:scaffold              # choose platform interactively  (CoCo)
 $devops-coco-agents:scaffold-for-github   # GitHub Actions scaffold         (CoCo)
 $devops-coco-agents:scaffold-for-gitlab   # GitLab CI scaffold              (CoCo)
@@ -66,6 +67,17 @@ $devops-coco-agents:scaffold-for-gitlab   # GitLab CI scaffold              (CoC
 /scaffold              # Claude Code — choose platform
 /scaffold-for-github   # Claude Code — GitHub Actions
 /scaffold-for-gitlab   # Claude Code — GitLab CI
+
+# IDD
+$devops-coco-agents:idd                   # IDD audit, rewrite, or ICR (CoCo)
+$devops-coco-agents:idd/evaluate-prompt   # audit a prompt for IDD alignment
+$devops-coco-agents:idd/rewrite-prompt    # rewrite a prompt using IDD structure
+$devops-coco-agents:idd/measure-icr       # measure Intent Compression Ratio
+
+/idd                   # Claude Code — IDD tools
+/idd/evaluate-prompt
+/idd/rewrite-prompt
+/idd/measure-icr
 ```
 
 ## Quick Start
