@@ -1,7 +1,7 @@
 ---
 name: scaffold-for-gitlab
 description: >
-  Guided 6-beat scaffold: set up a new GitLab CI CoCo agent project from
+  Guided 6-step scaffold: set up a new GitLab CI CoCo agent project from
   the gitlab-coco-agent template. Provisions Snowflake OIDC resources, sets
   GitLab CI/CD variables, and optionally pushes a sample app to trigger the
   scan->issue->fix automation loop end-to-end.
@@ -9,22 +9,23 @@ description: >
   $devops-coco-agents:scaffold-for-gitlab directly.
 ---
 
-## Beat Order Rule
+## Step Order
 
-⚠️ MANDATORY: Execute beats 1–6 in order. Never skip or reorder.
-Each beat builds on the previous — jumping ahead leaves the project in a broken state.
+⚠️ MANDATORY: Execute steps 1–6 in order. Never skip or reorder.
+Each step builds on the previous — jumping ahead leaves the project in a broken state.
 
 ## Forbidden Actions
 
 ⚠️ FORBIDDEN:
 - Do not modify the template project (`https://gitlab.com/kameshsampath/gitlab-coco-agent`) itself.
 - Do not create Snowflake objects beyond what `snowflake/setup.sql` provisions.
-- Do not set CI/CD variables other than the four listed in Beat 4.
-- Do not enable pipelines before Beat 4 is complete.
+- Do not set CI/CD variables other than the four listed in Configure.
+- Do not enable pipelines before Configure is complete.
 
 ## Prerequisites Check
 
-Run both checks before collecting any inputs.
+Run both checks before collecting any inputs. If either fails, stop and help
+the user fix it before proceeding.
 
 **Check 1 — glab CLI:**
 ```bash
@@ -41,6 +42,34 @@ ask_user_question:
 ```
 Re-run `glab auth status` after "Done" — only continue when it passes.
 
+**Multi-account detection:**
+Parse the current username from `glab auth status 2>&1` by extracting
+`"Logged in to gitlab.com as <username>"`.
+
+Always confirm the active account:
+```
+ask_user_question:
+  header: "GitLab account"
+  question: "Currently logged into GitLab as <detected-username>. Use this account?"
+  options:
+    - label: "Yes, use <detected-username>"
+    - label: "Switch to a different account"
+      description: "Logs out the current account — you will re-authenticate with the new one"
+```
+
+If "Switch to a different account":
+```
+ask_user_question:
+  header: "Switch account"
+  question: "Run these commands in your terminal, then come back:\n\n  glab auth logout --hostname gitlab.com\n  glab auth login --hostname gitlab.com"
+  options:
+    - label: "Done, I've switched"
+    - label: "Cancel, keep current account"
+```
+If "Done": re-run `glab auth status 2>&1`, confirm new username.
+
+> ✓ **Done:** Using GitLab account `<confirmed-username>`.
+
 **Check 2 — snow CLI connection:**
 ```bash
 snow connection test
@@ -55,21 +84,23 @@ ask_user_question:
     - label: "Abort"
 ```
 
-## Run Mode and Project Name
+## Run Mode, Project Name, and Output Format
 
-Read `skills/scaffold/references/run-mode.md` and follow Steps A and B before
-collecting any other inputs. Set `$SKILL_MODE` and prepare the project name
-`defaultValue` from the petname output before proceeding to Stopping Points.
+Read `skills/scaffold/references/run-mode.md` (Steps A + B) and
+`skills/scaffold/references/output-format.md` (formatting rules)
+before collecting any inputs.
 
 ## Stopping Points
 
-Collect all four values before Beat 1.
+Collect all four values before Create Project.
 
 1. **Target project** (`PROJECT_PATH`) — detect GitLab username:
    ```bash
    glab api user --field username
    ```
-   Use the petname generated in Step B of `run-mode.md` as the `defaultValue`:
+   Use the petname from Step B of `run-mode.md` as the `defaultValue`.
+   Track the generated name as `GENERATED_PETNAME` for conflict detection.
+
    ```
    ask_user_question:
      header: "New project"
@@ -78,7 +109,30 @@ Collect all four values before Beat 1.
      defaultValue: "<detected-username>/<generated-petname>"
    ```
 
-2. **Snowflake prefix** (`PREFIX`) — ask:
+   After the user answers, compare the submitted value to `<detected-username>/<GENERATED_PETNAME>`.
+   If they match: `USING_GENERATED = true`. If different: `USING_GENERATED = false`.
+
+2. **Visibility** (`PROJECT_VISIBILITY`) — GitLab supports all three levels.
+   Note: `glab project create` defaults to `--internal` if no flag is passed — always
+   pass the flag explicitly.
+
+   ```
+   ask_user_question:
+     header: "Visibility"
+     question: "Project visibility? (private is recommended)"
+     defaultAnswer: "Private"
+     options:
+       - label: "Private"
+         description: "Only project members can access it"
+       - label: "Internal"
+         description: "Visible to any authenticated GitLab user"
+       - label: "Public"
+         description: "Visible without authentication"
+   ```
+
+   Flag mapping: Private → `--private`, Internal → `--internal`, Public → `--public`.
+
+3. **Snowflake prefix** (`PREFIX`) — ask:
    ```
    ask_user_question:
      header: "Prefix"
@@ -87,18 +141,18 @@ Collect all four values before Beat 1.
      defaultValue: "DEMO"
    ```
 
-3. **Snowflake account** (`SNOWFLAKE_ACCOUNT`) — check `$SNOWFLAKE_ACCOUNT` env first; if unset, ask.
+4. **Snowflake account** (`SNOWFLAKE_ACCOUNT`) — check `$SNOWFLAKE_ACCOUNT` env first; if unset, ask.
 
-4. **GitLab bot token** (`GITLAB_TOKEN_coco`) — ask:
+5. **GitLab bot token** (`GITLAB_TOKEN_coco`) — ask:
    ```
    ask_user_question:
      header: "GitLab token"
-     question: "GitLab PAT for the bot service account (needs api + write_repository scope). Stored as masked CI/CD variable."
+     question: "GitLab PAT for the bot service account (needs api + write_repository scope)."
      type: text
      defaultValue: ""
    ```
 
-Derive group, project name, and encoded path for later:
+Derive group, project name, and encoded path:
 ```bash
 GROUP="${PROJECT_PATH%/*}"
 PROJECT_NAME="${PROJECT_PATH##*/}"
@@ -107,25 +161,53 @@ ENCODED_PATH=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote('$PR
 
 ---
 
-## Beat 1 — Scaffold project from template
+## Create Project
+
+**Pre-step guard — check remote does not already exist:**
+```bash
+glab api "projects/$ENCODED_PATH" 2>&1
+```
+
+If the project EXISTS and `USING_GENERATED = true`:
+- Generate a new petname (see `output-format.md` rotation rules)
+- > ℹ️ **Note:** `$PROJECT_PATH` is already taken — here's a fresh suggestion.
+- Re-present the name question with new `defaultValue`
+- Repeat up to 3 times; after 3 failures set `USING_GENERATED = false` and ask user to type their own
+
+If the project EXISTS and `USING_GENERATED = false`:
+```
+ask_user_question:
+  header: "Project exists"
+  question: "`$PROJECT_PATH` already exists on GitLab. What would you like to do?"
+  options:
+    - label: "Use the existing project"
+      description: "Skip creation, clone it, and proceed to Hold Before Go-Live"
+    - label: "Choose a different path"
+      description: "Pick a new path and retry this step"
+    - label: "Abort"
+```
+
+If "Use the existing project": clone it and skip to post-step verification.
+
+---
 
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-Working from a versioned template guarantees every project starts from a known-good
-baseline — OIDC wiring, pipeline structure, and prompt files are all pre-tested.
-You own the fork; the template project is never modified.
+> Working from a versioned template guarantees every project starts from a
+> known-good baseline — OIDC wiring, pipeline structure, and prompt files are
+> all pre-tested. You own the fork; the template project is never modified.
 
-**What we'll do:**
+**What we'll do**
 ```
-Creates: $PROJECT_PATH (from https://gitlab.com/kameshsampath/gitlab-coco-agent)
+Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, from https://gitlab.com/kameshsampath/gitlab-coco-agent)
 Clones:  ./$PROJECT_NAME
 ```
 
 Exit plan mode, then ask:
 ```
 ask_user_question:
-  header: "Beat 1"
+  header: "Create Project"
   question: "Create project $PROJECT_PATH from the gitlab-coco-agent template?"
   options:
     - label: "Create and clone"
@@ -140,52 +222,72 @@ Execute:
 ```bash
 glab project create "$PROJECT_NAME" \
   --group "$GROUP" \
-  --template-project https://gitlab.com/kameshsampath/gitlab-coco-agent
+  --template-project https://gitlab.com/kameshsampath/gitlab-coco-agent \
+  --$PROJECT_VISIBILITY
 
 glab repo clone "$PROJECT_PATH"
 ```
 
-**What we did:**
-- Project created at `https://gitlab.com/$PROJECT_PATH`
+**Post-step verification:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .visibility   # confirm remote exists
+ls "$PROJECT_NAME"                                     # confirm local clone exists
+```
+If either check fails:
+> ⚠️ **Gate check failed:** Project creation may not have completed fully.
+> Check the output above and retry this step.
+
+### What we did
+- Project created at `https://gitlab.com/$PROJECT_PATH` ($PROJECT_VISIBILITY)
 - Local clone in `./$PROJECT_NAME`
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
-  header: "Beat 1 done"
-  question: "Project created and cloned. Continue to Beat 2 (disable pipelines)?"
+  header: "Create Project done"
+  question: "Project created and cloned. Continue to Hold Before Go-Live?"
   options:
-    - label: "Yes, continue to Beat 2"
-    - label: "Replay Beat 1"
+    - label: "Yes, continue"
+    - label: "Replay this step"
     - label: "Stop here"
 ```
 
 ---
 
-## Beat 2 — Repo Init (disable pipelines)
+## Hold Before Go-Live
+
+**Gate check:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .name 2>&1   # remote accessible
+ls "$PROJECT_NAME" 2>&1                               # local clone present
+```
+If either fails:
+> ⚠️ **Gate check failed:** Remote project or local clone not found.
+> Complete "Create Project" before continuing.
+
+---
 
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-Running pipelines before auth is configured produces failed OIDC exchanges and
-confusing error messages. Disabling now means the first real run will be a clean
-green one.
+> Running pipelines before auth is configured produces failed OIDC exchanges
+> and confusing error messages. Disabling now means the first real run will be
+> a clean green one.
 
-**What we'll do:**
+**What we'll do**
 ```
 Disables:  CI/CD pipelines on $PROJECT_PATH
-Effect:    No jobs fire until Beat 5 re-enables them
-Command:   glab api projects/$ENCODED_PATH -X PUT -F builds_access_level=disabled
+Effect:    No jobs fire until Watch the Loop re-enables them
 ```
 
 Exit plan mode, then ask:
 ```
 ask_user_question:
-  header: "Beat 2"
+  header: "Hold Before Go-Live"
   question: "Disable CI/CD pipelines on $PROJECT_PATH until setup is complete?"
   options:
     - label: "Yes, disable pipelines"
-    - label: "Replay Beat 2"
+    - label: "Replay this step"
     - label: "Stop here"
 ```
 
@@ -194,51 +296,62 @@ Execute:
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 ```
 
-**What we did:**
-Pipelines disabled. No CI jobs will fire until setup is complete.
+**Post-step verification:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+```
+Expected: `"disabled"`
+
+### What we did
+- CI/CD pipelines disabled on `$PROJECT_PATH`
+- No jobs will fire until setup is complete
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
-  header: "Beat 2 done"
-  question: "Pipelines disabled. Continue to Beat 3 (provision Snowflake OIDC user)?"
+  header: "Hold Before Go-Live done"
+  question: "Pipelines disabled. Continue to Connect Snowflake?"
   options:
-    - label: "Yes, continue to Beat 3"
-    - label: "Replay Beat 2"
+    - label: "Yes, continue"
+    - label: "Replay this step"
     - label: "Stop here"
 ```
 
 ---
 
-## Beat 3 — Provision Snowflake OIDC user
+## Connect Snowflake
+
+**Gate check:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+```
+Expected: `"disabled"`. If not:
+> ⚠️ **Gate check failed:** Pipelines are still enabled.
+> Complete "Hold Before Go-Live" before continuing.
+
+---
 
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
-GitLab proves the runner's identity; Snowflake verifies the issuer and subject
-claim. No secret is ever stored — the token exists only for the duration of the job.
+> WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
+> GitLab proves the runner's identity; Snowflake verifies the issuer and subject
+> claim. No secret is ever stored — the token exists only for the duration of the job.
 
-**What we'll do:**
-```
-Creates (idempotent — safe to re-run):
-  Role:      ${PREFIX}_GITLAB_COCO_AGENT_ROLE
-  Warehouse: ${PREFIX}_GITLAB_COCO_AGENT_WH  (XS, auto-suspend 60s)
-  User:      ${PREFIX}_GITLAB_COCO_AGENT_USER
-             TYPE = WORKLOAD_IDENTITY
-             OIDC issuer: https://gitlab.com
-             Subject: project_path:$PROJECT_PATH:ref_type:branch:ref:main
+**What we'll do**
 
-Command:
-  snow sql -f $PROJECT_NAME/snowflake/setup.sql \
-    -D "PREFIX=$PREFIX" -D "REPO_PATH=$PROJECT_PATH" \
-    --enable-templating STANDARD
-```
+| Object | Value |
+|--------|-------|
+| Role | `${PREFIX}_GITLAB_COCO_AGENT_ROLE` |
+| Warehouse | `${PREFIX}_GITLAB_COCO_AGENT_WH` (XS, auto-suspend 60s) |
+| User | `${PREFIX}_GITLAB_COCO_AGENT_USER` |
+| Auth | TYPE = WORKLOAD_IDENTITY, OIDC issuer: https://gitlab.com |
+| Subject | `project_path:$PROJECT_PATH:ref_type:branch:ref:main` |
 
 Exit plan mode, then ask:
 ```
 ask_user_question:
-  header: "Beat 3"
+  header: "Connect Snowflake"
   question: "Provision Snowflake OIDC resources?"
   options:
     - label: "Yes, provision"
@@ -256,51 +369,63 @@ snow sql -f "$PROJECT_NAME/snowflake/setup.sql" \
   --enable-templating STANDARD
 ```
 
-**Verify** the user was created:
+**Post-step verification:**
 ```bash
 snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
 ```
-If DESC fails: "Setup SQL may have failed. Check the output above and re-run Beat 3."
+If DESC fails:
+> ⚠️ **Gate check failed:** OIDC user not found after provisioning.
+> Check the output above and re-run this step.
 
-**What we did:**
-Snowflake role, warehouse, and WORKLOAD_IDENTITY user provisioned and verified.
+### What we did
+- Role, warehouse, and WORKLOAD_IDENTITY user created and verified
+- Subject claim bound to `project_path:$PROJECT_PATH:ref_type:branch:ref:main`
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
-  header: "Beat 3 done"
-  question: "Snowflake resources ready. Continue to Beat 4 (set CI/CD variables)?"
+  header: "Connect Snowflake done"
+  question: "Snowflake resources ready. Continue to Configure?"
   options:
-    - label: "Yes, continue to Beat 4"
-    - label: "Replay Beat 3"
+    - label: "Yes, continue"
+    - label: "Replay this step"
     - label: "Stop here"
 ```
 
 ---
 
-## Beat 4 — Set GitLab CI/CD variables
+## Configure
+
+**Gate check:**
+```bash
+snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
+```
+If empty or error:
+> ⚠️ **Gate check failed:** OIDC user not found.
+> Complete "Connect Snowflake" before continuing.
+
+---
 
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-Four config values tell the pipeline which Snowflake context to enter and how to
-authenticate with GitLab as the bot account. Combined with the OIDC token from
-Beat 3, no long-lived Snowflake credential is needed.
+> Four config values tell the pipeline which Snowflake context to enter and how
+> to authenticate with GitLab as the bot account. Combined with the OIDC token,
+> no long-lived Snowflake credential is needed.
 
-**What we'll do:**
-```
-Variable              Value                                  Masked
-──────────────────── ────────────────────────────────────── ──────
-SNOWFLAKE_ACCOUNT    $SNOWFLAKE_ACCOUNT                     yes
-SNOWFLAKE_USER       ${PREFIX}_GITLAB_COCO_AGENT_USER       no
-SNOWFLAKE_WAREHOUSE  ${PREFIX}_GITLAB_COCO_AGENT_WH         no
-GITLAB_TOKEN_coco    (provided token)                       yes
-```
+**What we'll do**
+
+| Variable | Value | Masked |
+|----------|-------|--------|
+| `SNOWFLAKE_ACCOUNT` | `$SNOWFLAKE_ACCOUNT` | yes |
+| `SNOWFLAKE_USER` | `${PREFIX}_GITLAB_COCO_AGENT_USER` | no |
+| `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITLAB_COCO_AGENT_WH` | no |
+| `GITLAB_TOKEN_coco` | (provided token) | yes |
 
 Exit plan mode, then ask:
 ```
 ask_user_question:
-  header: "Beat 4"
+  header: "Configure"
   question: "Set these four CI/CD variables on $PROJECT_PATH?"
   options:
     - label: "Yes, set variables"
@@ -316,8 +441,15 @@ glab variable set SNOWFLAKE_WAREHOUSE --value "${PREFIX}_GITLAB_COCO_AGENT_WH"
 glab variable set GITLAB_TOKEN_coco   --value "$GITLAB_TOKEN_coco"   --masked
 ```
 
-**What we did:**
-4 CI/CD variables set. Pipelines can now authenticate to Snowflake via OIDC.
+**Post-step verification:**
+```bash
+glab variable list 2>&1
+```
+Confirm `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `GITLAB_TOKEN_coco` are listed.
+
+### What we did
+- 4 CI/CD variables set on `$PROJECT_PATH`
+- Pipelines can now authenticate to Snowflake via OIDC
 
 ⚠️ MANDATORY pause — local runner:
 ```
@@ -326,9 +458,8 @@ ask_user_question:
   question: "Pipelines run on GitLab shared runners by default. Set up a project-local runner now for testing?"
   options:
     - label: "Yes, install runner inside the repo"
-      description: "Installs gitlab-runner to .gitlab/runner/ — shell executor, isolated per project, gitignored"
+      description: "Installs gitlab-runner to .gitlab/runner/ — shell executor, gitignored"
     - label: "Skip — use GitLab shared runners"
-      description: "Re-enable pipelines with: glab api projects/$ENCODED_PATH -X PUT -F builds_access_level=enabled"
     - label: "Stop here"
 ```
 
@@ -337,18 +468,16 @@ If "Yes, install runner inside the repo":
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-A project-local registered runner lets you test the full loop without waiting for
-a shared runner slot. The shell executor uses the cortex binary on PATH directly —
-no Docker image build needed. It lives inside the repo so it is always discoverable
-and removed cleanly on teardown.
+> A project-local registered runner lets you test the full loop without waiting
+> for a shared runner slot. The shell executor uses the cortex binary on PATH
+> directly — no Docker image build needed.
 
-**What we'll do:**
+**What we'll do**
 ```
 Downloads:   $PROJECT_NAME/.gitlab/runner/  (gitignored)
 Executor:    shell (uses cortex from PATH — no Docker required)
-Tag:         local (only jobs with tags: [local] will run on this runner)
+Tag:         local
 Patches:     tags: [local] added to scan-code and coco-agent in .gitlab-ci.yml
-Note:        binary is ~80 MB — download takes a moment
 ```
 
 Exit plan mode, then ask:
@@ -363,7 +492,6 @@ ask_user_question:
 
 Execute:
 ```bash
-# 1. Download runner binary
 mkdir -p "$PROJECT_NAME/.gitlab/runner"
 echo '.gitlab/runner/' >> "$PROJECT_NAME/.gitignore"
 RUNNER_VERSION=$(curl -s \
@@ -373,8 +501,6 @@ curl -LsS \
   "https://gitlab-runner-downloads.s3.amazonaws.com/v${RUNNER_VERSION}/binaries/gitlab-runner-darwin-arm64" \
   -o "$PROJECT_NAME/.gitlab/runner/gitlab-runner"
 chmod +x "$PROJECT_NAME/.gitlab/runner/gitlab-runner"
-
-# 2. Create runner token via GitLab API (requires glab auth)
 PROJECT_ID=$(glab api "projects/$ENCODED_PATH" --jq .id)
 RUNNER_TOKEN=$(glab api "user/runners" -X POST \
   --field "runner_type=project_type" \
@@ -383,16 +509,12 @@ RUNNER_TOKEN=$(glab api "user/runners" -X POST \
   --field "run_untagged=false" \
   --field "description=local-mac" \
   --jq .token)
-
-# 3. Register with project-local config
 "$PROJECT_NAME/.gitlab/runner/gitlab-runner" register \
   --config "$PROJECT_NAME/.gitlab/runner/config.toml" \
   --url https://gitlab.com \
   --token "$RUNNER_TOKEN" \
   --executor shell \
   --non-interactive
-
-# 4. Patch pipeline jobs to use local tag
 python3 - << 'PYEOF'
 import re, os
 path = os.environ.get("PROJECT_NAME", ".") + "/.gitlab-ci.yml"
@@ -400,12 +522,10 @@ content = open(path).read()
 for job in ["scan-code", "coco-agent"]:
     content = re.sub(rf"^({job}:)", rf"\1\n  tags: [local]", content, flags=re.MULTILINE)
 open(path, "w").write(content)
-print("Patched .gitlab-ci.yml: tags: [local] added to scan-code and coco-agent")
+print("Patched: tags: [local] added to scan-code and coco-agent")
 PYEOF
 git -C "$PROJECT_NAME" add .gitlab-ci.yml .gitignore
 git -C "$PROJECT_NAME" commit -m "ci: use self-hosted local runner for testing [skip ci]"
-
-# 5. Capture runner ID for teardown
 RUNNER_ID=$(glab api "projects/$ENCODED_PATH/runners" \
   --jq '.[] | select(.description == "local-mac") | .id' | head -1)
 echo "Runner ID: $RUNNER_ID  (keep this — needed for teardown)"
@@ -421,28 +541,30 @@ ask_user_question:
     - label: "Stop here"
 ```
 
-Verify runner is online:
+**Post-step verification:**
 ```bash
 glab api "projects/$ENCODED_PATH/runners" \
   --jq '.[] | select(.description == "local-mac") | {id, status, tag_list}'
 ```
-If status is not `online`, ask the user to check the runner terminal before proceeding.
+If status is not `online`:
+> ⚠️ **Gate check failed:** Runner is not online.
+> Check the runner terminal and ensure the `gitlab-runner run` command is still running.
 
-**What we did:**
-Runner installed in `$PROJECT_NAME/.gitlab/runner/`, pipeline patched to add
-`tags: [local]` on `scan-code` and `coco-agent`, committed.
-Runner ID is `$RUNNER_ID` — keep it for teardown.
+### What we did
+- Runner installed in `$PROJECT_NAME/.gitlab/runner/` and online
+- Runner ID: `$RUNNER_ID` (save for teardown)
+- Pipeline patched to add `tags: [local]` on `scan-code` and `coco-agent`
 
 > To restore default runner later: `git revert HEAD --no-edit && git push`
 
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
-  header: "Beat 4 done"
-  question: "Variables set and runner ready. Want to test with a sample app?"
+  header: "Configure done"
+  question: "Setup complete. Want to test with a sample app?"
   options:
     - label: "Yes, run smoke test and watch the loop"
-      description: "Copies a 3-issue Python app into demo/ (CI-watched folder), enables pipelines, commits as revertable test commit and pushes"
+      description: "Copies a 3-issue Python app into demo/, enables pipelines, commits and pushes"
     - label: "No, I'll push my own code later"
       description: "Re-enable pipelines with: glab api projects/$ENCODED_PATH -X PUT -F builds_access_level=enabled"
     - label: "Stop here"
@@ -450,18 +572,29 @@ ask_user_question:
 
 ---
 
-## Beat 5 — Smoke test (optional)
+## Watch the Loop (optional)
 
-Only execute if user chose "Yes, run smoke test" in Beat 4.
+Only execute if user chose "Yes, run smoke test" in Configure.
+
+**Gate check (if local runner was set up):**
+```bash
+glab api "projects/$ENCODED_PATH/runners" \
+  --jq '[.[] | select(.description == "local-mac")] | length'
+```
+If 0:
+> ⚠️ **Gate check failed:** No runner is online.
+> Start `.gitlab/runner/gitlab-runner run` in a new terminal before continuing.
+
+---
 
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-The smoke-test app contains 3 intentional security and correctness issues. Running
-it proves the loop end-to-end: scan finds issues, CoCo fixes them, MRs are opened
-automatically. No production code is touched — this is a safe, revertable test.
+> The smoke-test app contains 3 intentional security and correctness issues.
+> Running it proves the loop end-to-end: scan finds issues, CoCo fixes them,
+> MRs are opened automatically. No production code is touched.
 
-**What we'll do:**
+**What we'll do**
 ```
 Step 1: write smoke-test app (3 files) to $PROJECT_NAME/demo/
 Step 2: enable pipelines on $PROJECT_PATH
@@ -472,7 +605,7 @@ Step 4: trigger pipeline + show URL
 Exit plan mode, then ask:
 ```
 ask_user_question:
-  header: "Beat 5"
+  header: "Watch the Loop"
   question: "Copy smoke-test app, enable pipelines, and push to trigger the loop?"
   options:
     - label: "Yes, run the smoke test"
@@ -480,9 +613,8 @@ ask_user_question:
 ```
 
 **Step 1 — Copy templates:**
-Read `skills/scaffold/references/smoke-test.md` for the full template description
-and copy instructions, then write the files from `skills/scaffold/templates/smoke-test/`
-to `$PROJECT_NAME/demo/`.
+Read `skills/scaffold/references/smoke-test.md` and write the files from
+`skills/scaffold/templates/smoke-test/` to `$PROJECT_NAME/demo/`.
 
 **Step 2 — Enable pipelines:**
 ```bash
@@ -497,7 +629,7 @@ git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
 ```
 
-⚠️ This is a revertable test commit. Once the loop has validated, clean up with:
+⚠️ Revertable test commit. Clean up when done:
 ```bash
 git revert HEAD --no-edit && git push
 ```
@@ -508,16 +640,18 @@ glab pipeline run --branch main
 echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
 ```
 
-**What we did:**
-Smoke-test app pushed to `demo/`. Pipelines enabled. The scan-code job will trigger
-on the runner and create `[coco-agent]` issues; each issue triggers the coco-agent job.
-See `skills/scaffold/references/smoke-test.md` for what to expect.
+### What we did
+- Smoke-test app pushed to `demo/`
+- Pipelines enabled — `scan-code` job will trigger on the runner
+- Issues and MRs will appear automatically
+
+See `skills/scaffold/references/smoke-test.md` for expected output.
 For local testing options, see `skills/scaffold/references/local-testing.md`.
 
 ⚠️ MANDATORY pause (repeatable until satisfied):
 ```
 ask_user_question:
-  header: "Beat 5"
+  header: "Watch the Loop"
   question: "Check for issues and MRs?"
   options:
     - label: "Check now"
@@ -533,11 +667,11 @@ echo "=== MRs ===" && glab mr list --state opened
 
 ---
 
-## Beat 6 — Teardown (optional)
+## Clean Up (optional)
 
 ```
 ask_user_question:
-  header: "Beat 6"
+  header: "Clean Up"
   question: "Tear down the project resources?"
   options:
     - label: "Yes, tear down everything"
@@ -551,11 +685,11 @@ If "Keep everything" → stop.
 Enter plan mode and present:
 
 **Why this matters** (Guided mode only):
-Resources left running after a demo cost credits. Teardown reverses Beats 3–4 in
-order: deregister runner → drop Snowflake objects → delete project. Skipping any
-step leaves orphaned objects.
+> Resources left running after a demo cost credits. Teardown reverses the setup
+> in order: deregister runner → drop Snowflake objects → delete project.
+> Skipping any step leaves orphaned objects.
 
-**What we'll drop:**
+**What we'll drop**
 ```
 [if "tear down everything"]
   Runner:    deregistered from $PROJECT_PATH (if installed, ID: $RUNNER_ID)
@@ -582,7 +716,6 @@ Execute:
 # Deregister local runner (if installed)
 if [ -n "$RUNNER_ID" ]; then
   glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
-  # Revert pipeline tag patch
   python3 - << 'PYEOF'
 import re, os
 path = os.environ.get("PROJECT_NAME", ".") + "/.gitlab-ci.yml"
@@ -590,7 +723,7 @@ content = open(path).read()
 for job in ["scan-code", "coco-agent"]:
     content = re.sub(rf"^({job}:)\n  tags: \[local\]", rf"\1", content, flags=re.MULTILINE)
 open(path, "w").write(content)
-print("Reverted .gitlab-ci.yml: tags: [local] removed")
+print("Reverted: tags: [local] removed")
 PYEOF
   git -C "$PROJECT_NAME" add .gitlab-ci.yml
   git -C "$PROJECT_NAME" commit -m "ci: restore default runner [skip ci]" 2>/dev/null || true
@@ -603,5 +736,9 @@ snow sql -f "$PROJECT_NAME/snowflake/teardown.sql" \
 glab project delete "$PROJECT_PATH" --yes
 ```
 
-**What we did:**
-Runner deregistered. Snowflake objects dropped. Project deleted. Environment is clean.
+### What we did
+- Runner deregistered (if installed)
+- Snowflake objects dropped
+- Project deleted
+
+> ✓ **Done:** Environment is clean.
