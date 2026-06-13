@@ -337,6 +337,11 @@ Enter plan mode and present:
 > WORKLOAD_IDENTITY replaces long-lived passwords with short-lived OIDC tokens.
 > GitLab proves the runner's identity; Snowflake verifies the issuer and subject
 > claim. No secret is ever stored — the token exists only for the duration of the job.
+>
+> The `SNOWFLAKE.CORTEX_USER` database role is also granted — not to access databases,
+> but to unlock Cortex AI endpoints. `cortex exec` authenticates via OIDC, then calls
+> Snowflake's Cortex REST API. Without this role the session is valid but every
+> LLM inference call returns 403 Forbidden.
 
 **What we'll do**
 
