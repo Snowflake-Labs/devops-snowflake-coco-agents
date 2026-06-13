@@ -513,15 +513,36 @@ git -C "$REPO_NAME" add .github/workflows/
 git -C "$REPO_NAME" commit -m "ci(workflows): use self-hosted local runner for testing [skip ci]"
 ```
 
+Start the runner in the background (safe across chat steps — won't be killed when you move to the next step):
+```bash
+nohup "$REPO_NAME/.github/runner/run.sh" \
+  > "$REPO_NAME/.github/runner/runner.log" 2>&1 &
+echo $! > "$REPO_NAME/.github/runner/runner.pid"
+sleep 3
+grep -q "Listening for Jobs" "$REPO_NAME/.github/runner/runner.log" \
+  && echo "✓ Runner is listening (PID $(cat $REPO_NAME/.github/runner/runner.pid))" \
+  || echo "Still starting — check: tail -f $REPO_NAME/.github/runner/runner.log"
+```
+
+> `runner.pid` and `runner.log` are inside `.github/runner/` which is gitignored.
+> To stop later: `kill $(cat $REPO_NAME/.github/runner/runner.pid)`
+
 Then ask:
 ```
 ask_user_question:
   header: "Start runner"
-  question: "Runner configured. Open a NEW terminal, run the command below, and wait for 'Listening for Jobs':\n\n  $REPO_NAME/.github/runner/run.sh"
+  question: "Runner started in background. Confirmed listening?"
   options:
-    - label: "Runner is listening — continue"
+    - label: "Yes, runner is listening — continue"
+    - label: "Not yet — show runner log"
     - label: "Stop here"
 ```
+
+If "Not yet — show runner log":
+```bash
+tail -20 "$REPO_NAME/.github/runner/runner.log"
+```
+Re-ask until confirmed.
 
 **Post-step verification:**
 ```bash
@@ -557,13 +578,23 @@ ask_user_question:
 
 Only execute if user chose "Yes, run smoke test" in Configure.
 
+**Enable Actions first** (must happen before the runner can pick up jobs):
+```bash
+gh api "repos/$REPO_PATH/actions/permissions" \
+  -X PUT \
+  --input - <<'EOF'
+{"enabled": true}
+EOF
+```
+
 **Gate check (if local runner was set up):**
 ```bash
 gh api "repos/$REPO_PATH/actions/runners" --jq '.runners | length'
 ```
 If 0:
 > ⚠️ **Gate check failed:** No runner is online.
-> Start `.github/runner/run.sh` in a new terminal before continuing.
+> Check: `tail -f $REPO_NAME/.github/runner/runner.log`
+> Restart: `nohup $REPO_NAME/.github/runner/run.sh > $REPO_NAME/.github/runner/runner.log 2>&1 & echo $! > $REPO_NAME/.github/runner/runner.pid`
 
 ---
 
@@ -577,9 +608,9 @@ If 0:
 **What we'll do**
 ```
 Step 1: write smoke-test app (3 files) to $REPO_NAME/demo/
-Step 2: enable Actions on $REPO_PATH
-Step 3: commit + push  (revertable — git revert HEAD when done)
-Step 4: show Actions URL
+Step 2: commit + push  →  scan workflow triggers on the runner
+Step 3: show Actions URL
+Step 4: revert when done  (git revert HEAD --no-edit && git push)
 ```
 
 Call `exit_plan_mode`. Then execute directly:
@@ -588,16 +619,7 @@ Call `exit_plan_mode`. Then execute directly:
 Read `skills/scaffold/references/smoke-test.md` and write the files from
 `skills/scaffold/templates/smoke-test/` to `$REPO_NAME/demo/`.
 
-**Step 2 — Enable Actions:**
-```bash
-gh api "repos/$REPO_PATH/actions/permissions" \
-  -X PUT \
-  --input - <<'EOF'
-{"enabled": true}
-EOF
-```
-
-**Step 3 — Commit and push:**
+**Step 2 — Commit and push:**
 ```bash
 cd "$REPO_NAME"
 git add demo/
@@ -605,19 +627,20 @@ git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
 ```
 
-⚠️ This is a revertable test commit. Clean up when done:
-```bash
-git revert HEAD --no-edit && git push
-```
-
-**Step 4 — Show Actions URL:**
+**Step 3 — Show Actions URL:**
 ```bash
 echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
 ```
 
+**Step 4 — Revert when done** (run after the loop has validated):
+```bash
+cd "$REPO_NAME"
+git revert HEAD --no-edit && git push
+```
+
 ### What we did
-- Smoke-test app pushed to `demo/`
-- Actions enabled — scan workflow will trigger on the runner
+- Actions enabled on `$REPO_PATH`
+- Smoke-test app pushed to `demo/` — scan workflow triggered on the runner
 - Issues and PRs will appear automatically
 
 See `skills/scaffold/references/smoke-test.md` for expected output.
@@ -690,6 +713,11 @@ Execute:
 ```bash
 # Deregister local runner (if installed)
 if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
+  # Kill the background runner process gracefully before deregistering
+  if [ -f "$REPO_NAME/.github/runner/runner.pid" ]; then
+    kill "$(cat $REPO_NAME/.github/runner/runner.pid)" 2>/dev/null || true
+    sleep 2
+  fi
   REMOVE_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/remove-token" -X POST -q .token)
   "$REPO_NAME/.github/runner/config.sh" remove --token "$REMOVE_TOKEN"
   sed -i '' 's/runs-on: \[self-hosted, local\]/runs-on: ubuntu-latest/g' \

@@ -543,15 +543,37 @@ RUNNER_ID=$(glab api "projects/$ENCODED_PATH/runners" \
 echo "Runner ID: $RUNNER_ID  (keep this — needed for teardown)"
 ```
 
+Start the runner in the background (safe across chat steps — won't be killed when you move to the next step):
+```bash
+nohup "$PROJECT_NAME/.gitlab/runner/gitlab-runner" run \
+  --config "$PROJECT_NAME/.gitlab/runner/config.toml" \
+  > "$PROJECT_NAME/.gitlab/runner/runner.log" 2>&1 &
+echo $! > "$PROJECT_NAME/.gitlab/runner/runner.pid"
+sleep 3
+grep -q "Listening for Jobs" "$PROJECT_NAME/.gitlab/runner/runner.log" \
+  && echo "✓ Runner is listening (PID $(cat $PROJECT_NAME/.gitlab/runner/runner.pid))" \
+  || echo "Still starting — check: tail -f $PROJECT_NAME/.gitlab/runner/runner.log"
+```
+
+> `runner.pid` and `runner.log` are inside `.gitlab/runner/` which is gitignored.
+> To stop later: `kill $(cat $PROJECT_NAME/.gitlab/runner/runner.pid)`
+
 Then ask:
 ```
 ask_user_question:
   header: "Start runner"
-  question: "Runner configured. Open a NEW terminal, run the command below, and wait for 'Listening for Jobs':\n\n  $PROJECT_NAME/.gitlab/runner/gitlab-runner run --config $PROJECT_NAME/.gitlab/runner/config.toml"
+  question: "Runner started in background. Confirmed listening?"
   options:
-    - label: "Runner is listening — continue"
+    - label: "Yes, runner is listening — continue"
+    - label: "Not yet — show runner log"
     - label: "Stop here"
 ```
+
+If "Not yet — show runner log":
+```bash
+tail -20 "$PROJECT_NAME/.gitlab/runner/runner.log"
+```
+Re-ask until confirmed.
 
 **Post-step verification:**
 ```bash
@@ -588,6 +610,11 @@ ask_user_question:
 
 Only execute if user chose "Yes, run smoke test" in Configure.
 
+**Enable pipelines first** (must happen before the runner can pick up jobs):
+```bash
+glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
+```
+
 **Gate check (if local runner was set up):**
 ```bash
 glab api "projects/$ENCODED_PATH/runners" \
@@ -595,7 +622,8 @@ glab api "projects/$ENCODED_PATH/runners" \
 ```
 If 0:
 > ⚠️ **Gate check failed:** No runner is online.
-> Start `.gitlab/runner/gitlab-runner run` in a new terminal before continuing.
+> Check: `tail -f $PROJECT_NAME/.gitlab/runner/runner.log`
+> Restart: `nohup $PROJECT_NAME/.gitlab/runner/gitlab-runner run --config $PROJECT_NAME/.gitlab/runner/config.toml > $PROJECT_NAME/.gitlab/runner/runner.log 2>&1 & echo $! > $PROJECT_NAME/.gitlab/runner/runner.pid`
 
 ---
 
@@ -609,9 +637,9 @@ If 0:
 **What we'll do**
 ```
 Step 1: write smoke-test app (3 files) to $PROJECT_NAME/demo/
-Step 2: enable pipelines on $PROJECT_PATH
-Step 3: commit + push  (revertable — git revert HEAD when done)
-Step 4: trigger pipeline + show URL
+Step 2: commit + push  →  scan-code job triggers on the runner
+Step 3: trigger pipeline + show URL
+Step 4: revert when done  (git revert HEAD --no-edit && git push)
 ```
 
 Call `exit_plan_mode`. Then execute directly:
@@ -620,12 +648,7 @@ Call `exit_plan_mode`. Then execute directly:
 Read `skills/scaffold/references/smoke-test.md` and write the files from
 `skills/scaffold/templates/smoke-test/` to `$PROJECT_NAME/demo/`.
 
-**Step 2 — Enable pipelines:**
-```bash
-glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
-```
-
-**Step 3 — Commit and push:**
+**Step 2 — Commit and push:**
 ```bash
 cd "$PROJECT_NAME"
 git add demo/
@@ -633,20 +656,21 @@ git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
 ```
 
-⚠️ Revertable test commit. Clean up when done:
-```bash
-git revert HEAD --no-edit && git push
-```
-
-**Step 4 — Trigger pipeline and show URL:**
+**Step 3 — Trigger pipeline and show URL:**
 ```bash
 glab pipeline run --branch main
 echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
 ```
 
+**Step 4 — Revert when done** (run after the loop has validated):
+```bash
+cd "$PROJECT_NAME"
+git revert HEAD --no-edit && git push
+```
+
 ### What we did
-- Smoke-test app pushed to `demo/`
-- Pipelines enabled — `scan-code` job will trigger on the runner
+- Pipelines enabled on `$PROJECT_PATH`
+- Smoke-test app pushed to `demo/` — scan-code job triggered on the runner
 - Issues and MRs will appear automatically
 
 See `skills/scaffold/references/smoke-test.md` for expected output.
@@ -719,6 +743,11 @@ Execute:
 ```bash
 # Deregister local runner (if installed)
 if [ -n "$RUNNER_ID" ]; then
+  # Kill the background runner process gracefully before deregistering
+  if [ -f "$PROJECT_NAME/.gitlab/runner/runner.pid" ]; then
+    kill "$(cat $PROJECT_NAME/.gitlab/runner/runner.pid)" 2>/dev/null || true
+    sleep 2
+  fi
   glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
   python3 - << 'PYEOF'
 import re, os
