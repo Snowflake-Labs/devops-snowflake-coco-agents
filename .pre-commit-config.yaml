@@ -13,3 +13,19 @@ repos:
           - id: markdownlint
             args: [--config, .markdownlint.yml]
             files: ^(README|AGENTS|CLAUDE)\.md$
+
+    - repo: local
+      hooks:
+          - id: skill-line-counts
+            name: Skill guidelines (line counts + no inline SKILL_DIR)
+            language: python
+            entry: python3 scripts/check_skill_guidelines.py
+            files: ^skills/scaffold/
+            pass_filenames: false
+
+          - id: skill-llm-audit
+            name: Skill guidelines (LLM audit via skill-development)
+            language: script
+            entry: scripts/audit-skill.sh
+            files: ^skills/scaffold/.*\.md$
+            pass_filenames: false
