@@ -275,14 +275,84 @@ gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "${PREFIX}_GITHUB_C
 **What we did:**
 3 secrets set. Workflows can now authenticate to Snowflake via OIDC.
 
+⚠️ MANDATORY pause — local runner:
+```
+ask_user_question:
+  header: "Local runner"
+  question: "The workflows run on a self-hosted local runner. Set one up now for local testing?"
+  options:
+    - label: "Yes, install runner inside the repo"
+      description: "Installs to .github/runner/ — isolated per project, gitignored, removed with the repo"
+    - label: "Skip — I'll configure a runner later"
+      description: "Set up manually: Settings → Actions → Runners → New self-hosted runner → select macOS, use label 'local'"
+    - label: "Stop here"
+```
+
+If "Yes, install runner inside the repo":
+
+Enter plan mode and present:
+```
+Installs:   $REPO_NAME/.github/runner/  (gitignored)
+Configures: runner bound to https://github.com/$REPO_PATH
+Labels:     self-hosted, local
+Patches:    runs-on in cortex-scan.yml and cortex-fix.yml → [self-hosted, local]
+Note:       binary is ~100 MB — download takes a moment
+```
+
+Exit plan mode, then execute:
+```bash
+mkdir -p "$REPO_NAME/.github/runner"
+echo '.github/runner/' >> "$REPO_NAME/.gitignore"
+RUNNER_VERSION=$(curl -s https://api.github.com/repos/actions/runner/releases/latest \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+curl -LsS \
+  "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-osx-arm64-${RUNNER_VERSION}.tar.gz" \
+  | tar xz -C "$REPO_NAME/.github/runner"
+RUNNER_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/registration-token" -X POST -q .token)
+"$REPO_NAME/.github/runner/config.sh" \
+  --url "https://github.com/$REPO_PATH" \
+  --token "$RUNNER_TOKEN" \
+  --labels "self-hosted,local" \
+  --unattended
+# Patch workflows to target the local runner
+sed -i '' 's/runs-on: ubuntu-latest/runs-on: [self-hosted, local]/g' \
+  "$REPO_NAME/.github/workflows/cortex-scan.yml" \
+  "$REPO_NAME/.github/workflows/cortex-fix.yml"
+git -C "$REPO_NAME" add .github/workflows/
+git -C "$REPO_NAME" commit -m "ci(workflows): use self-hosted local runner for testing [skip ci]"
+```
+
+Then ask:
+```
+ask_user_question:
+  header: "Start runner"
+  question: "Runner configured. Open a NEW terminal, run the command below, and wait for 'Listening for Jobs':\n\n  $REPO_NAME/.github/runner/run.sh"
+  options:
+    - label: "Runner is listening — continue"
+    - label: "Stop here"
+```
+
+Verify runner is online:
+```bash
+gh api "repos/$REPO_PATH/actions/runners" \
+  --jq '.runners[] | {name, status, labels: [.labels[].name]}'
+```
+If status is not `online`, ask the user to check the runner terminal before proceeding.
+
+**What we did:**
+Runner installed in `$REPO_NAME/.github/runner/` and online. Workflows patched to
+`runs-on: [self-hosted, local]` and committed. Workflows will execute on this machine.
+
+> To restore `ubuntu-latest` later: `git revert HEAD --no-edit && git push`
+
 ⚠️ MANDATORY pause:
 ```
 ask_user_question:
   header: "Beat 4 done"
-  question: "Secrets set. Want to test the workflow with a sample app?"
+  question: "Secrets set and runner ready. Want to test with a sample app?"
   options:
     - label: "Yes, run smoke test and watch the loop"
-      description: "Copies a 3-issue Python app into demo/ (CI-watched folder), enables Actions, commits as revertable test commit and pushes" Actions, commits and pushes"
+      description: "Copies a 3-issue Python app into demo/ (CI-watched folder), enables Actions, commits as revertable test commit and pushes"
     - label: "No, I'll push my own code later"
       description: "Actions stay disabled — re-enable with: gh api repos/$REPO_PATH/actions/permissions -X PUT --input - <<<'{\"enabled\":true}'"
     - label: "Stop here"
@@ -297,7 +367,7 @@ Only execute if user chose "Yes, run smoke test" in Beat 4.
 **What I'll do:**
 Copy the smoke-test app (3 intentional issues) into `demo/` (the CI-watched folder),
 enable Actions, commit as a revertable test commit, and push.
-The scan workflow will trigger automatically.
+The scan workflow will trigger automatically on the local runner.
 
 **Step 1 — Copy templates:**
 Read `skills/scaffold/references/smoke-test.md` for the full template description
@@ -372,6 +442,18 @@ ask_user_question:
 for final confirmation before executing:
 
 ```bash
+# Deregister local runner (if installed)
+if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
+  REMOVE_TOKEN=$(gh api "repos/$REPO_PATH/actions/runners/remove-token" -X POST -q .token)
+  "$REPO_NAME/.github/runner/config.sh" remove --token "$REMOVE_TOKEN"
+  # Revert workflow runner target back to ubuntu-latest
+  sed -i '' 's/runs-on: \[self-hosted, local\]/runs-on: ubuntu-latest/g' \
+    "$REPO_NAME/.github/workflows/cortex-scan.yml" \
+    "$REPO_NAME/.github/workflows/cortex-fix.yml"
+  git -C "$REPO_NAME" add .github/workflows/
+  git -C "$REPO_NAME" commit -m "ci(workflows): restore ubuntu-latest runner [skip ci]" 2>/dev/null || true
+fi
+
 snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
 gh repo delete "$REPO_PATH" --yes
 ```
