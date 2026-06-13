@@ -94,9 +94,14 @@ ask_user_question:
 
 ## Run Mode, Project Name, and Output Format
 
-Read `skills/scaffold/references/run-mode.md` (Steps A + B) and
-`skills/scaffold/references/output-format.md` (formatting rules)
-before collecting any inputs.
+Read `skills/scaffold/references/run-mode.md` and follow Steps A–D before
+collecting any other inputs:
+- Step A sets `$SKILL_MODE`
+- Step B generates the petname for the project name `defaultValue`
+- Step C detects Snowflake username → `$PREFIX`
+- Step D detects or asks for `$SNOWFLAKE_ACCOUNT`
+
+Also read `skills/scaffold/references/output-format.md` (formatting rules).
 
 ## Stopping Points
 
@@ -140,21 +145,8 @@ Collect all four values before Create Project.
 
    Flag mapping: Private → `--private`, Internal → `--internal`, Public → `--public`.
 
-3. **Snowflake prefix** (`PREFIX`) — detect from current Snowflake user:
-   ```bash
-   snow sql -q "SELECT CURRENT_USER()" --format json \
-     | python3 -c "import sys,json; u=list(json.load(sys.stdin)[0].values())[0]; print(u.split('@')[0].upper()[:10])"
-   ```
-   Then ask:
-   ```
-   ask_user_question:
-     header: "Prefix"
-     question: "Snowflake resource prefix? All objects will be named PREFIX_GITLAB_COCO_AGENT_*"
-     type: text
-     defaultValue: "<detected-snowflake-user>"
-   ```
-
-4. **Snowflake account** (`SNOWFLAKE_ACCOUNT`) — check `$SNOWFLAKE_ACCOUNT` env first; if unset, ask.
+3. Use the petname from Step B of `run-mode.md` as the `defaultValue`.
+   Track the generated name as `GENERATED_PETNAME` for conflict detection.
 
 5. **GitLab bot token** (`GITLAB_TOKEN_coco`) — ask:
    ```
