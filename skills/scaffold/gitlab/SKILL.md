@@ -295,17 +295,6 @@ If either check fails:
 - Project created at `https://gitlab.com/$PROJECT_PATH` ($PROJECT_VISIBILITY)
 - Local clone in `./$PROJECT_NAME`
 
-⚠️ MANDATORY pause:
-```
-ask_user_question:
-  header: "Create Project done"
-  question: "Project created and cloned. Continue to Hold Before Go-Live?"
-  options:
-    - label: "Yes, continue"
-    - label: "Replay this step"
-    - label: "Stop here"
-```
-
 ---
 
 ## Hold Before Go-Live
@@ -348,16 +337,6 @@ glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 ### What we did
 - Confirmed CI/CD pipelines are disabled on `$PROJECT_PATH`
 - No jobs will fire until Watch the Loop re-enables them
-
-⚠️ MANDATORY pause:
-```
-ask_user_question:
-  header: "Hold Before Go-Live done"
-  question: "Pipelines confirmed disabled. Continue to Connect Snowflake?"
-  options:
-    - label: "Yes, continue"
-    - label: "Stop here"
-```
 
 ---
 
@@ -424,17 +403,6 @@ If either returns empty rows, the setup SQL did not complete — re-run this ste
 ### What we did
 - Role, warehouse, and `SERVICE` user with `WORKLOAD_IDENTITY` OIDC config created and verified
 - Subject claim bound to `project_path:$PROJECT_PATH:ref_type:branch:ref:main`
-
-⚠️ MANDATORY pause:
-```
-ask_user_question:
-  header: "Connect Snowflake done"
-  question: "Snowflake resources ready. Continue to Configure?"
-  options:
-    - label: "Yes, continue"
-    - label: "Replay this step"
-    - label: "Stop here"
-```
 
 ---
 
