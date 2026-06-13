@@ -380,6 +380,13 @@ If DESC fails:
 > ⚠️ **Gate check failed:** OIDC user not found after provisioning.
 > Check the output above and re-run this step.
 
+Also verify role and warehouse exist:
+```bash
+snow sql -q "SHOW ROLES LIKE '${PREFIX}_GITHUB_COCO_AGENT_ROLE'" --format json 2>&1
+snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITHUB_COCO_AGENT_WH'" --format json 2>&1
+```
+If either returns empty rows, the setup SQL did not complete — re-run this step.
+
 ### What we did
 - Role, warehouse, and WORKLOAD_IDENTITY user created and verified
 - Subject claim bound to `repo:$REPO_PATH:ref:refs/heads/main`
