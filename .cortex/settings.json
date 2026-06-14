@@ -1,32 +1,32 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "sql_execute",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .cortex/hooks/guard-sql.sh",
-            "timeout": 10,
-            "enabled": true,
-            "statusMessage": "Checking SQL safety..."
-          }
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "sql_execute",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash .cortex/hooks/guard-sql.sh",
+                        "timeout": 10,
+                        "enabled": true,
+                        "statusMessage": "Checking SQL safety..."
+                    }
+                ]
+            }
+        ],
+        "PermissionRequest": [
+            {
+                "matcher": ".*",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "bash .cortex/hooks/auto-approve.sh",
+                        "timeout": 5,
+                        "enabled": true,
+                        "statusMessage": "Checking permissions..."
+                    }
+                ]
+            }
         ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .cortex/hooks/auto-approve.sh",
-            "timeout": 5,
-            "enabled": true,
-            "statusMessage": "Checking permissions..."
-          }
-        ]
-      }
-    ]
-  }
+    }
 }
