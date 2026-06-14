@@ -21,26 +21,50 @@ Validate bot token: `glab api user | python3 -c "import sys,json; print(json.loa
 
 ---
 
-**Load in order:**
+**Load `gitlab/steps/step-4a-variables.md`** — set CI/CD variables.
 
-1. `gitlab/steps/step-4a-variables.md` — Set CI/CD variables
+---
 
-2. Ask for local runner:
-   ```
-   ask_user_question:
-     header: "Local runner"
-     question: "Set up a self-hosted local runner for testing?"
-     options:
-       - label: "Yes, install runner inside the project"
-         description: "Installs to .gitlab/runner/ — isolated per project, gitignored"
-       - label: "Skip — use GitLab.com shared runners"
-       - label: "Stop here"
-   ```
-   - If "Yes": load `gitlab/steps/step-4b-runner.md`
-   - If "Skip": mark step complete and move on
+**Route by `$SETUP_MODE`:**
+
+### Quick start path (`SETUP_MODE = "quick"`)
+
+```bash
+_j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
+
+# Re-enable pipelines (was disabled in step 2)
+glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
+
+# Branch protection — check first (brownfield projects may already have rules)
+EXISTING=$(glab api "projects/$ENCODED_PATH/protected_branches" \
+  | python3 -c "import sys,json; r=json.load(sys.stdin); \
+    print(next((x['name'] for x in r if x['name']=='main'),''))" 2>/dev/null)
+if [ -n "$EXISTING" ]; then
+  echo "ℹ️  Existing branch protection on main — keeping current rules."
+else
+  glab api "projects/$ENCODED_PATH/protected_branches" \
+    -X POST -F name=main -F push_access_level=0 -F merge_access_level=40
+fi
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
+echo "✓ Quick start complete. Push code to $PROJECT_PATH to trigger the scan+fix loop."
+```
+
+### Full setup path (`SETUP_MODE = "full"`)
+
+Ask for local runner:
+```
+ask_user_question:
+  header: "Local runner"
+  question: "Set up a self-hosted local runner for testing?"
+  options:
+    - label: "Yes, install runner inside the project"
+      description: "Installs to .gitlab/runner/ — isolated per project, gitignored"
+    - label: "Skip — use GitLab.com shared runners"
+    - label: "Stop here"
+```
+- If "Yes": load `gitlab/steps/step-4b-runner.md`
+- If "Skip" or "Stop here": mark step complete, then ask about smoke test → Step 5 or stop
 
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
 ```
-
-Ask if user wants to run smoke test → route to Step 5 or stop.

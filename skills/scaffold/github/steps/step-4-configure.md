@@ -19,38 +19,49 @@ If empty or error: ⚠️ Complete Step 3 first.
 
 ---
 
-**Load in order:**
+**Load `github/steps/step-4a-secrets.md`** — set GH secrets + workflow permissions.
 
-1. `github/steps/step-4a-secrets.md` — Set GH secrets + workflow permissions
+---
 
-2. Ask for local runner:
-   ```
-   ask_user_question:
-     header: "Local runner"
-     question: "Set up a self-hosted local runner for testing?"
-     options:
-       - label: "Yes, install runner inside the repo"
-       - label: "Skip — use GitHub-hosted runners"
-       - label: "No, I'll push my own code later"
-         description: "Skips smoke test — branch protection applied immediately"
-       - label: "Stop here"
-   ```
-   - If "Yes": load `github/steps/step-4b-runner.md`
-   - If "No, I'll push my own code later": apply branch protection now (see below), then mark complete
-   - If "Skip": mark step complete and move on
+**Route by `$SETUP_MODE`:**
 
-**Branch protection (if skipping smoke test):**
+### Quick start path (`SETUP_MODE = "quick"`)
+
 ```bash
-gh api "repos/$REPO_PATH/branches/main/protection" -X PUT \
-  --input - << 'EOF'
+# Re-enable Actions (was disabled in step 2)
+gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": true}'
+
+# Branch protection — check first (brownfield repos may already have rules)
+EXISTING=$(gh api "repos/$REPO_PATH/branches/main/protection" 2>/dev/null)
+if [ -n "$EXISTING" ]; then
+  echo "ℹ️  Existing branch protection found on main — keeping current rules."
+else
+  gh api "repos/$REPO_PATH/branches/main/protection" -X PUT \
+    --input - << 'EOF'
 {"required_status_checks":null,"enforce_admins":false,
  "required_pull_request_reviews":{"required_approving_review_count":1},
  "restrictions":null}
 EOF
+fi
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
+echo "✓ Quick start complete. Push code to $REPO_PATH to trigger the scan+fix loop."
 ```
+
+### Full setup path (`SETUP_MODE = "full"`)
+
+Ask for local runner:
+```
+ask_user_question:
+  header: "Local runner"
+  question: "Set up a self-hosted local runner for testing?"
+  options:
+    - label: "Yes, install runner inside the repo"
+    - label: "Skip — use GitHub-hosted runners"
+    - label: "Stop here"
+```
+- If "Yes": load `github/steps/step-4b-runner.md`
+- If "Skip" or "Stop here": mark step complete, then ask about smoke test → Step 5 or stop
 
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
 ```
-
-Ask if user wants to run smoke test → route to Step 5 or stop.

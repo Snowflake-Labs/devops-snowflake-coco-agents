@@ -114,6 +114,23 @@ python3 --version 2>&1
 ```
 If missing or below 3.11, ask user to install Python 3.11+ and retry.
 
+## Setup Mode
+
+Ask once — before collecting project inputs:
+
+```
+ask_user_question:
+  header: "Setup mode"
+  question: "How would you like to set up CoCo?"
+  options:
+    - label: "Quick start — cloud runners"
+      description: "Steps 1-3 + secrets → re-enable CI → done in ~10 min. Works for new projects and existing ones."
+    - label: "Full setup — with smoke test"
+      description: "All steps including an end-to-end validation run with a sample app."
+```
+
+Set `SETUP_MODE = "quick"` or `SETUP_MODE = "full"`.
+
 ## Run Mode, Project Name, and Output Format
 
 Read `skills/scaffold/references/run-mode.md` (Steps A–D: sets `$SKILL_MODE`, `$PREFIX`, `$SNOWFLAKE_ACCOUNT`, petname).
@@ -224,13 +241,13 @@ python3 "$MANIFEST_OPS" init \
 
 Execute each step by loading the corresponding file. Steps must be executed in order.
 
-| Step | File |
-|------|------|
-| 1. Create Project | `skills/scaffold/gitlab/steps/step-1-create-project.md` |
-| 2. Hold Before Go-Live | `skills/scaffold/gitlab/steps/step-2-hold-before-golive.md` |
-| 3. Connect Snowflake | `skills/scaffold/gitlab/steps/step-3-connect-snowflake.md` |
-| 4. Configure | `skills/scaffold/gitlab/steps/step-4-configure.md` |
-| 5. Watch the Loop | `skills/scaffold/gitlab/steps/step-5-watch-loop.md` |
-| 6. Clean Up | `skills/scaffold/gitlab/steps/step-6-clean-up.md` |
+| Step | File | Mode |
+|------|------|------|
+| 1. Create Project | `skills/scaffold/gitlab/steps/step-1-create-project.md` | both |
+| 2. Hold Before Go-Live | `skills/scaffold/gitlab/steps/step-2-hold-before-golive.md` | both |
+| 3. Connect Snowflake | `skills/scaffold/gitlab/steps/step-3-connect-snowflake.md` | both |
+| 4. Configure | `skills/scaffold/gitlab/steps/step-4-configure.md` | both (routes by SETUP_MODE) |
+| 5. Watch the Loop | `skills/scaffold/gitlab/steps/step-5-watch-loop.md` | full only |
+| 6. Clean Up | `skills/scaffold/gitlab/steps/step-6-clean-up.md` | on demand |
 
 Load each step file and execute it fully before proceeding to the next.
