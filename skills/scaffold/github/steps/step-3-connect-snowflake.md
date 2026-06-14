@@ -40,15 +40,18 @@ Call `exit_plan_mode`. Then execute directly:
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_3
 
-# Derive object names first — must happen before SQL execution
+# Derive object names — must happen before SQL execution
 python3 "$MANIFEST_OPS" fill-snowflake \
   --manifest "$MANIFEST" --prefix "$PREFIX" --repo-name "$REPO_NAME" --platform "github"
 
 SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
 SF_ROLE=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.role)
 SF_WH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.warehouse)
+```
 
-snow sql -q "
+Execute the following SQL using the `snowflake_sql_execute` tool (multi-statement, single call):
+
+```sql
 USE ROLE ACCOUNTADMIN;
 CREATE ROLE IF NOT EXISTS $SF_ROLE;
 GRANT ROLE $SF_ROLE TO ROLE SYSADMIN;
@@ -61,18 +64,21 @@ CREATE USER IF NOT EXISTS $SF_USER
 GRANT ROLE $SF_ROLE TO USER $SF_USER;
 ALTER USER $SF_USER SET
   WORKLOAD_IDENTITY = (
-    TYPE = OIDC
-    ISSUER = 'https://token.actions.githubusercontent.com'
+    TYPE    = OIDC
+    ISSUER  = 'https://token.actions.githubusercontent.com'
     SUBJECT = 'repo:$REPO_PATH:ref:refs/heads/main'
   );
-"
 ```
 
-**Post-step verification:**
-```bash
-snow sql -q "DESC USER $SF_USER" --format json 2>&1
-snow sql -q "SHOW ROLES LIKE '$SF_ROLE'" --format json 2>&1
-snow sql -q "SHOW WAREHOUSES LIKE '$SF_WH'" --format json 2>&1
+**Post-step verification** — use `snowflake_sql_execute`:
+```sql
+DESC USER $SF_USER;
+```
+```sql
+SHOW ROLES LIKE '$SF_ROLE';
+```
+```sql
+SHOW WAREHOUSES LIKE '$SF_WH';
 ```
 If any return empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found after provisioning. Re-run this step.

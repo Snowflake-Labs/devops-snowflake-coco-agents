@@ -84,7 +84,14 @@ fi
 for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
   [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
 done
-snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
+```
+
+Execute using the `snowflake_sql_execute` tool:
+```sql
+DROP USER      IF EXISTS $SF_USER;
+DROP WAREHOUSE IF EXISTS $SF_WH;
+DROP ROLE      IF EXISTS $SF_ROLE;
+```
 gh repo delete "$REPO_PATH" --yes
 rm -rf "$REPO_NAME"
 rm -rf ".coco-agent/$REPO_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true

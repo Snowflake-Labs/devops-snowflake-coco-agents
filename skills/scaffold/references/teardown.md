@@ -86,9 +86,11 @@ DROP WAREHOUSE IF EXISTS $SF_WH;
 DROP ROLE      IF EXISTS $SF_ROLE;
 ```
 
-Execute (inline — does not rely on teardown.sql in the repo):
-```bash
-snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
+Execute using the `snowflake_sql_execute` tool (inline — no file dependency):
+```sql
+DROP USER      IF EXISTS $SF_USER;
+DROP WAREHOUSE IF EXISTS $SF_WH;
+DROP ROLE      IF EXISTS $SF_ROLE;
 ```
 
 ---
