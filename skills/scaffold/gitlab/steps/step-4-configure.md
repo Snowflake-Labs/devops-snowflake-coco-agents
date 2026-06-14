@@ -145,7 +145,7 @@ python3 "$MANIFEST_OPS" fill-runner \
 
 # Create 1-day PAT — token stored in Keychain, never shown
 PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-python3 "$PAT_OPS" create --user "$SF_USER"
+python3 "$PAT_OPS" create --user "$SF_USER" --manifest "$MANIFEST"
 security find-generic-password -s "coco-snowflake-pat" -a "$SF_USER" -w \
   | glab variable set SNOWFLAKE_PAT --masked
 ```

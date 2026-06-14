@@ -103,7 +103,7 @@ _PROJECT_KEYS = [
     "created_at",
 ]
 
-_SNOWFLAKE_KEYS = ["user", "role", "warehouse"]
+_SNOWFLAKE_KEYS = ["user", "role", "warehouse", "pat_name"]
 
 _RUNNER_KEYS = ["installed", "pid", "runner_id"]
 
@@ -279,7 +279,7 @@ def _fresh_manifest(
             "run_mode": run_mode,
             "created_at": now,
         },
-        "snowflake": {"user": "", "role": "", "warehouse": ""},
+        "snowflake": {"user": "", "role": "", "warehouse": "", "pat_name": ""},
         "runner": {"installed": False, "pid": 0, "runner_id": ""},
         "steps": _blank_steps(),
     }
@@ -387,9 +387,22 @@ def cmd_fill_snowflake(args: argparse.Namespace) -> int:
         "user": f"{p}_{suffix}_{r}_COCO_AGENT_USER",
         "role": f"{p}_{suffix}_{r}_COCO_AGENT_ROLE",
         "warehouse": f"{p}_{suffix}_{r}_COCO_AGENT_WH",
+        "pat_name": data.get("snowflake", {}).get("pat_name", ""),
     }
     save_manifest(args.manifest, data)
     print(f"✓ [snowflake] filled with {p}_{suffix}_{r}_COCO_AGENT_* names")
+    return 0
+
+
+def cmd_fill_pat(args: argparse.Namespace) -> int:
+    data = load_manifest(args.manifest)
+    if not data:
+        print(f"Error: manifest not found: {args.manifest}", file=sys.stderr)
+        return 1
+    data.setdefault("snowflake", {})["pat_name"] = args.pat_name
+    save_manifest(args.manifest, data)
+    action = f"set to '{args.pat_name}'" if args.pat_name else "cleared"
+    print(f"✓ [snowflake.pat_name] {action}")
     return 0
 
 
@@ -525,6 +538,11 @@ def _build_parser() -> argparse.ArgumentParser:
     pfs.add_argument("--repo-name", required=True)
     pfs.add_argument("--platform", required=True, choices=["github", "gitlab"])
 
+    # fill-pat
+    pfp = sub.add_parser("fill-pat", help="Set or clear snowflake.pat_name")
+    pfp.add_argument("--manifest", required=True)
+    pfp.add_argument("--pat-name", default="", help="PAT name; empty string clears it")
+
     # fill-runner
     pfr = sub.add_parser("fill-runner", help="Fill [runner] pid and runner_id")
     pfr.add_argument("--manifest", required=True)
@@ -558,6 +576,7 @@ def main() -> int:
         "step-start": cmd_step_start,
         "step-complete": cmd_step_complete,
         "fill-snowflake": cmd_fill_snowflake,
+        "fill-pat": cmd_fill_pat,
         "fill-runner": cmd_fill_runner,
         "read": cmd_read,
         "summary": cmd_summary,

@@ -100,9 +100,15 @@ EOF
 **Step 7 — Revoke smoke test PAT** (if local runner was used):
 ```bash
 PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-python3 "$PAT_OPS" revoke --user "$SF_USER" && \
-  gh secret delete SNOWFLAKE_PAT --repo "$REPO_PATH" && \
+SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
+PAT_NAME=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.pat_name 2>/dev/null || echo "")
+if [ -n "$PAT_NAME" ]; then
+  python3 "$PAT_OPS" revoke --user "$SF_USER" --manifest "$MANIFEST"
+  gh secret delete SNOWFLAKE_PAT --repo "$REPO_PATH"
   gh secret delete SNOWFLAKE_USER --repo "$REPO_PATH"
+else
+  echo "No PAT in manifest — skipping PAT revocation"
+fi
 ```
 
 ```bash

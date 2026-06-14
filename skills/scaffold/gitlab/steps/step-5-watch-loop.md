@@ -93,9 +93,15 @@ glab api "projects/$ENCODED_PATH/protected_branches" \
 **Step 7 — Revoke smoke test PAT** (if local runner was used):
 ```bash
 PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-python3 "$PAT_OPS" revoke --user "$SF_USER" && \
-  glab variable delete SNOWFLAKE_PAT && \
+SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
+PAT_NAME=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.pat_name 2>/dev/null || echo "")
+if [ -n "$PAT_NAME" ]; then
+  python3 "$PAT_OPS" revoke --user "$SF_USER" --manifest "$MANIFEST"
+  glab variable delete SNOWFLAKE_PAT
   glab variable delete SNOWFLAKE_USER
+else
+  echo "No PAT in manifest — skipping PAT revocation"
+fi
 ```
 
 ```bash

@@ -93,6 +93,11 @@ DROP WAREHOUSE IF EXISTS $SF_WH;
 DROP ROLE      IF EXISTS $SF_ROLE;
 ```
 
+If `snowflake.pat_name` is set in the manifest, also revoke the PAT first:
+```sql
+ALTER USER $SF_USER DROP PROGRAMMATIC ACCESS TOKEN $PAT_NAME;
+```
+
 ---
 
 ## Kill + Deregister Runner
