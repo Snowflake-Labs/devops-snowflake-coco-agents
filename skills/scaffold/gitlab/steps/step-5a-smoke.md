@@ -2,11 +2,15 @@
 
 > Sub-step of Step 5. Enables pipelines and pushes the smoke-test app.
 
+```bash
+_j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
+```
+
 **Enable pipelines** (was disabled during setup — must happen before push):
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
 ```
-**Verify:** `glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['builds_access_level'])"` → expected `enabled`.
+**Verify:** `glab api "projects/$ENCODED_PATH" | _j "['builds_access_level']"` → expected `enabled`.
 
 **Gate check — runner online (staleness-aware, 300s threshold):**
 ```bash

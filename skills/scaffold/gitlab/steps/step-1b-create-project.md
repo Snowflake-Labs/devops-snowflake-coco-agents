@@ -31,7 +31,8 @@ Call `exit_plan_mode`. Then execute:
 
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest ".coco-agent/$PROJECT_NAME/manifest.toml" --step step_1
-NAMESPACE_ID=$(glab api user | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+_j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
+NAMESPACE_ID=$(glab api user | _j "['id']")
 for _i in 1 2 3; do
   CREATE_OUT=$(glab api "projects" --method POST \
     -F "name=$PROJECT_NAME" -F "namespace_id=$NAMESPACE_ID" \
@@ -63,7 +64,7 @@ python3 "$MANIFEST_OPS" move \
   --repo-path "$PROJECT_PATH" --repo-url "$PROJECT_URL" --repo-name "$PROJECT_NAME"
 ```
 
-**Verify:** `glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['visibility'])"` and `ls "$PROJECT_NAME"`.
+**Verify:** `glab api "projects/$ENCODED_PATH" | _j "['visibility']"` and `ls "$PROJECT_NAME"`.
 
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1

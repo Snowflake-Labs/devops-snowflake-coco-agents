@@ -19,9 +19,10 @@ mkdir -p "$PROJECT_NAME/.gitlab/runner"
 curl -LsS "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-darwin-arm64" \
   -o "$PROJECT_NAME/.gitlab/runner/gitlab-runner"
 chmod +x "$PROJECT_NAME/.gitlab/runner/gitlab-runner"
+_j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
 RUNNER_TOKEN=$(glab api "projects/$ENCODED_PATH/runners" --method POST \
   --field "runner_type=project_type" --field "description=local-mac" --field "tag_list=local" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+  | _j "['token']")
 "$PROJECT_NAME/.gitlab/runner/gitlab-runner" register \
   --non-interactive --url "https://gitlab.com" --token "$RUNNER_TOKEN" \
   --executor shell --config "$PROJECT_NAME/.gitlab/runner/config.toml"

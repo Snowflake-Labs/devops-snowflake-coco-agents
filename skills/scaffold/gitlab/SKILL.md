@@ -74,11 +74,16 @@ Skip re-asking any question already in the manifest. Route to first step where `
 
 Run before collecting inputs.
 
-**Check 1 — glab CLI:**
+**Check 1 — glab auth (mandatory hard gate):**
 ```bash
 glab auth status 2>&1
 ```
-If not authenticated, ask user to run `glab auth login` and retry.
+If output does NOT contain `"Logged in to gitlab.com"`:
+> ⚠️ **STOP:** Not authenticated to GitLab.
+> Run `glab auth login --hostname gitlab.com` then re-invoke this skill.
+
+Do NOT continue until authenticated. All `glab api` commands in this skill
+use the stored session automatically — no manual token passing needed.
 
 **Multi-account:** parse `glab auth status` for `"Logged in to gitlab.com as <username>"`. Always confirm:
 ```
@@ -138,7 +143,11 @@ Collect all inputs before Create Project.
    Verify: `glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['name'], d['visibility'])"` — must succeed.
    Set `PROJECT_NAME="${PROJECT_PATH##*/}"`. Skip draft manifest and go directly to step-1 import path.
 
-1. **Target project** — detect username: `glab api user --field username`. Use petname as `defaultValue`.
+1. **Target project** — detect username:
+   ```bash
+   GITLAB_USER=$(glab api user | python3 -c "import sys,json; print(json.load(sys.stdin)['username'])")
+   ```
+   Use `$GITLAB_USER/<petname>` as `defaultValue`.
    ```
    ask_user_question:
      header: "New project"
@@ -172,8 +181,11 @@ Collect all inputs before Create Project.
 
    **If "Use glab auth token":**
    ```bash
-   GITLAB_TOKEN_coco=$(glab auth status --show-token 2>&1 | grep "Token found:" | awk '{print $NF}')
+   GITLAB_TOKEN_coco=$(glab auth token)
    ```
+   > ⚠️ This is your personal OAuth token. Fine for development — if you
+   > `glab auth logout`, the pipeline loses access. Use the PAT option for
+   > long-lived or shared projects.
 
    **If "Use dedicated PAT":** ask type first:
    ```
