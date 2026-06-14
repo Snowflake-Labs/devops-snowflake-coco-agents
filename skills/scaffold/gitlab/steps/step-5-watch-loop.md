@@ -14,7 +14,7 @@ glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
 ```
 **Verify enabled:**
 ```bash
-glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['builds_access_level'])"
 ```
 Expected: `enabled`. If not, stop — pipelines must be enabled before pushing.
 

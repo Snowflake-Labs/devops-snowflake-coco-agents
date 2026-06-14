@@ -53,9 +53,8 @@ python3 "$MANIFEST_OPS" move \
   --from ".coco-agent/$PROJECT_NAME" \
   --to   "$PROJECT_NAME/.coco-agent" \
   --repo-path "$PROJECT_PATH" \
-  --repo-url  "$PROJECT_URL"
-
-# Commit CoCo files to existing project
+  --repo-url  "$PROJECT_URL" \
+  --repo-name "$PROJECT_NAME"
 git -C "$PROJECT_NAME" add .cortex/ .gitlab-ci.yml .coco-agent/
 git -C "$PROJECT_NAME" commit -m "ci: add CoCo scan+fix pipeline and manifest [skip ci]"
 git -C "$PROJECT_NAME" push
@@ -116,15 +115,44 @@ Call `exit_plan_mode`. Then execute directly:
 python3 "$MANIFEST_OPS" step-start \
   --manifest ".coco-agent/$PROJECT_NAME/manifest.toml" --step step_1
 
-glab project create "$PROJECT_NAME" \
-  --group "$GROUP" \
-  --template-project https://gitlab.com/kameshsampath/gitlab-coco-agent \
-  --$PROJECT_VISIBILITY
+# Get namespace_id for the user/group
+NAMESPACE_ID=$(glab api user | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
-glab repo clone "$PROJECT_PATH"
+# Try to create blank project — rotate petname on collision (up to 3×)
+for _i in 1 2 3; do
+  CREATE_OUT=$(glab api "projects" --method POST \
+    -F "name=$PROJECT_NAME" \
+    -F "namespace_id=$NAMESPACE_ID" \
+    -F "visibility=$PROJECT_VISIBILITY" \
+    -F "initialize_with_readme=false" 2>&1)
+  if echo "$CREATE_OUT" | python3 -c "
+import sys, json
+try:
+    e = json.loads(sys.stdin.read())
+    msg = str(e.get('message', {}))
+    sys.exit(0 if 'Path has already been taken' in msg or 'has already been taken' in msg else 1)
+except: sys.exit(1)
+" 2>/dev/null; then
+    PROJECT_NAME=$(python3 -c "
+import random, string
+print('-'.join(''.join(random.choices(string.ascii_lowercase, k=4)) for _ in range(2)))
+")
+    PROJECT_PATH="${GROUP}/${PROJECT_NAME}"
+    ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_PATH', safe=''))")
+    echo "Name taken — rotating to $PROJECT_NAME"
+  else
+    echo "✓ Project created: $PROJECT_PATH"
+    break
+  fi
+done
+
+# Clone template, rewire remote to new project, push main only
+git clone https://gitlab.com/kameshsampath/gitlab-coco-agent "$PROJECT_NAME"
+git -C "$PROJECT_NAME" remote set-url origin "https://gitlab.com/$PROJECT_PATH.git"
+git -C "$PROJECT_NAME" push origin main
 
 # Disable pipelines immediately — prevents spurious runs during setup
-glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
+glab api "projects/$ENCODED_PATH" --method PUT -F "builds_access_level=disabled" 2>&1
 
 # Move draft manifest into repo and fill project identity
 PROJECT_URL="https://gitlab.com/$PROJECT_PATH"
@@ -132,12 +160,13 @@ python3 "$MANIFEST_OPS" move \
   --from ".coco-agent/$PROJECT_NAME" \
   --to   "$PROJECT_NAME/.coco-agent" \
   --repo-path "$PROJECT_PATH" \
-  --repo-url  "$PROJECT_URL"
+  --repo-url  "$PROJECT_URL" \
+  --repo-name "$PROJECT_NAME"
 ```
 
 **Post-step verification:**
 ```bash
-glab api "projects/$ENCODED_PATH" --jq .visibility
+glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['visibility'])"
 ls "$PROJECT_NAME"
 ```
 If either fails:

@@ -10,7 +10,7 @@ MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 **Gate check (staleness-aware):**
 ```bash
 python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_1 \
-  || { glab api "projects/$ENCODED_PATH" --jq .name 2>&1 && ls "$PROJECT_NAME" 2>&1; }
+  || { glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['name'])" 2>&1 && ls "$PROJECT_NAME" 2>&1; }
 ```
 If either fails:
 > ⚠️ **Gate check failed:** Remote project or local clone not found. Complete Step 1 first.
@@ -33,7 +33,7 @@ Call `exit_plan_mode`. Then execute directly:
 
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_2
-glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['builds_access_level'])"
 ```
 Expected: `"disabled"`. If not, re-disable:
 ```bash

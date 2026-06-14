@@ -135,7 +135,7 @@ Collect all inputs before Create Project.
      type: text
      defaultValue: "<username>/my-project"
    ```
-   Verify: `glab api "projects/$ENCODED_PATH" --jq '{name,visibility}'` — must succeed.
+   Verify: `glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['name'], d['visibility'])"` — must succeed.
    Set `PROJECT_NAME="${PROJECT_PATH##*/}"`. Skip draft manifest and go directly to step-1 import path.
 
 1. **Target project** — detect username: `glab api user --field username`. Use petname as `defaultValue`.
@@ -152,15 +152,55 @@ Collect all inputs before Create Project.
    Private / Internal / Public (default: Private)
    Store as `$PROJECT_VISIBILITY`. Flag: Private→`--private`, Internal→`--internal`, Public→`--public`.
 
-3. **GitLab bot token** (`GITLAB_TOKEN_coco`):
+3. **GitLab bot token** — detection chain (run in order, stop at first match):
+
+   ```bash
+   GITLAB_TOKEN_coco=""
+
+   # Level 1: env var already exported
+   [ -n "${GITLAB_TOKEN:-}" ] && GITLAB_TOKEN_coco="$GITLAB_TOKEN" && echo "✓ Found GITLAB_TOKEN in env"
+
+   # Level 2: .envrc (active or commented)
+   if [ -z "$GITLAB_TOKEN_coco" ] && grep -q "GITLAB_TOKEN" .envrc 2>/dev/null; then
+     _VAL=$(grep "GITLAB_TOKEN" .envrc | grep -v "^#" | head -1 | cut -d= -f2- | tr -d ' "')
+     [ -n "$_VAL" ] && GITLAB_TOKEN_coco="$_VAL" && echo "✓ Found GITLAB_TOKEN in .envrc"
+   fi
+
+   # Level 3: macOS Keychain (where glab auth login stores the token)
+   if [ -z "$GITLAB_TOKEN_coco" ]; then
+     _VAL=$(security find-generic-password -s "glab:https://gitlab.com" -w 2>/dev/null || true)
+     [ -n "$_VAL" ] && GITLAB_TOKEN_coco="$_VAL" && echo "✓ Found token in Keychain (glab)"
+   fi
+   ```
+
+   If `GITLAB_TOKEN_coco` still empty — ask:
    ```
    ask_user_question:
      header: "GitLab token"
-     question: "GitLab PAT for the bot service account (api + write_repository scope). Value will not be echoed back."
-     type: text
-     defaultValue: ""
+     question: "No GITLAB_TOKEN found. How would you like to provide one?"
+     options:
+       - label: "Open GitLab to create a new token"
+         description: "Opens token creation page with name and scopes pre-filled"
+       - label: "I already have a token"
    ```
-   Store as `GITLAB_TOKEN_coco` — never display after capture.
+   If "Open GitLab": open `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository`
+
+   Once token is available — ask type (affects scope instructions only):
+   ```
+   ask_user_question:
+     header: "Token type"
+     question: "Classic PAT or fine-grained token?"
+     options:
+       - label: "Classic PAT (api + write_repository scopes)"
+       - label: "Fine-grained token (Repository R/W, Issues R/W, MR R/W, CI/CD R/W)"
+   ```
+
+   **Store securely (no echo):**
+   ```bash
+   cortex secret store gitlab-token-coco --prompt
+   ```
+   From this point: all bash calls that need the token use `secret_env: {"GITLAB_TOKEN": "gitlab-token-coco"}`.
+   `glab` reads `GITLAB_TOKEN` from env automatically — no `--header` or `--token` flag needed.
 
 Derive: `GROUP="${PROJECT_PATH%/*}"`, `PROJECT_NAME="${PROJECT_PATH##*/}"`, `ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_PATH', safe=''))")`
 

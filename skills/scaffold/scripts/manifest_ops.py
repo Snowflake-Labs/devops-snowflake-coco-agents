@@ -322,6 +322,8 @@ def cmd_move(args: argparse.Namespace) -> int:
     # Fill repo identity now that clone succeeded
     data["project"]["repo_path"] = args.repo_path
     data["project"]["repo_url"] = args.repo_url
+    if args.repo_name:
+        data["project"]["repo_name"] = args.repo_name
     if "template" in data:
         data["template"]["cloned_at"] = _now_iso()
 
@@ -520,6 +522,7 @@ def _build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--to", dest="to_path", required=True)
     pm.add_argument("--repo-path", required=True)
     pm.add_argument("--repo-url", required=True)
+    pm.add_argument("--repo-name", default="")
 
     # step-start
     ps = sub.add_parser("step-start", help="Mark a step IN_PROGRESS")

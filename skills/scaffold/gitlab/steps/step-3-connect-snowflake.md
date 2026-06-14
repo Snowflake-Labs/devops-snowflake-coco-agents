@@ -10,7 +10,7 @@ MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 **Gate check (staleness-aware):**
 ```bash
 python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_2 \
-  || glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+  || glab api "projects/$ENCODED_PATH" | python3 -c "import sys,json; print(json.load(sys.stdin)['builds_access_level'])"
 ```
 If not `"disabled"`:
 > ⚠️ **Gate check failed:** Pipelines are still enabled. Complete Step 2 first.

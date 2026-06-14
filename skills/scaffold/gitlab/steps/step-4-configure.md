@@ -21,16 +21,13 @@ If empty or error:
 ---
 
 ⚠️ MANDATORY: collect `GITLAB_TOKEN_coco` via `ask_user_question` (header: "GitLab token", type: text).
-Before storing, validate the token has API access:
+Before storing, validate the token has API access (use bash with `secret_env: {"GITLAB_TOKEN": "gitlab-token-coco"}`):
 ```bash
-glab api user --token "$GITLAB_TOKEN_coco" --jq .username 2>&1
+glab api user | python3 -c "import sys,json; print('✓ Token valid, user:', json.load(sys.stdin)['username'])" 2>&1
 ```
 If empty/error: stop, ask user to generate a token with `api` scope.
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
-
-**Why this matters** (Guided mode only):
-> Six CI/CD variables: Snowflake auth context, local runner service-user PAT (no role creep), and GitLab bot token.
 
 **What we'll do** — 6 CI/CD variables:
 `SNOWFLAKE_ACCOUNT` (masked), `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PAT` (masked, local runner), `GITLAB_TOKEN_coco` (masked).
@@ -41,19 +38,19 @@ Call `exit_plan_mode`. Then execute directly:
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 
 cd "$PROJECT_NAME"
-glab variable set SNOWFLAKE_ACCOUNT   --value "$SNOWFLAKE_ACCOUNT"   --masked
-glab variable set SNOWFLAKE_USER      --value "$SF_USER"
-glab variable set SNOWFLAKE_WAREHOUSE --value "$SF_WH"
-glab variable set SNOWFLAKE_ROLE      --value "$SF_ROLE"
-glab variable set SNOWFLAKE_PAT       --value "$SNOWFLAKE_PAT"       --masked
-glab variable set GITLAB_TOKEN_coco   --value "$GITLAB_TOKEN_coco"   --masked
+# Standard variables (values from env)
+glab variable set SNOWFLAKE_ACCOUNT "$SNOWFLAKE_ACCOUNT" -m
+glab variable set SNOWFLAKE_USER    "$SF_USER"
+glab variable set SNOWFLAKE_WAREHOUSE "$SF_WH"
+glab variable set SNOWFLAKE_ROLE    "$SF_ROLE"
+# SNOWFLAKE_PAT from Keychain
+security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w \
+  | glab variable set SNOWFLAKE_PAT -m
+# GITLAB_TOKEN_coco from cortex secret (bash with secret_env={"GITLAB_TOKEN": "gitlab-token-coco"})
+glab variable set GITLAB_TOKEN_coco "$GITLAB_TOKEN" -m
 ```
 
-**Post-step verification:**
-```bash
-glab variable list 2>&1
-```
-Confirm `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PAT`, `GITLAB_TOKEN_coco` are listed.
+**Post-step verification:** `glab variable list 2>&1` — confirm all 6 variables listed.
 
 ### What we did
 - 6 CI/CD variables set on `$PROJECT_PATH`
@@ -161,10 +158,10 @@ ask_user_question:
     - label: "Stop here"
 ```
 If "Not yet": `tail -20 "$PROJECT_NAME/.gitlab/runner/runner.log"` and re-ask.
-
 **Post-step verification:**
 ```bash
-glab api "projects/$ENCODED_PATH/runners" --jq '.[] | select(.description == "local-mac") | {id, status}'
+glab variable list 2>&1 | grep -E "SNOWFLAKE|GITLAB_TOKEN"
+glab api "projects/$ENCODED_PATH/runners" | python3 -c "import sys,json; [print(r['id'],r['status']) for r in json.load(sys.stdin) if r.get('description')=='local-mac']"
 ```
 
 ```bash
