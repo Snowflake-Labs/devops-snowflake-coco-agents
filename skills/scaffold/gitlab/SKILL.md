@@ -118,6 +118,26 @@ Read `skills/scaffold/references/output-format.md` (formatting rules).
 
 Collect all inputs before Create Project.
 
+0. **Project type** — ask first:
+   ```
+   ask_user_question:
+     header: "Project type"
+     question: "Create a new GitLab project from template, or add CoCo to an existing one?"
+     options:
+       - label: "New project (from template)"
+       - label: "Add to existing project"
+   ```
+   If "Add to existing project": set `IMPORT_MODE = true`. Skip stopping points 1–2. Ask:
+   ```
+   ask_user_question:
+     header: "Existing project"
+     question: "Which project should CoCo be added to? (namespace/project)"
+     type: text
+     defaultValue: "<username>/my-project"
+   ```
+   Verify: `glab api "projects/$ENCODED_PATH" --jq '{name,visibility}'` — must succeed.
+   Set `PROJECT_NAME="${PROJECT_PATH##*/}"`. Skip draft manifest and go directly to step-1 import path.
+
 1. **Target project** — detect username: `glab api user --field username`. Use petname as `defaultValue`.
    ```
    ask_user_question:

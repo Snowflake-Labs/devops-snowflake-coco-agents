@@ -7,7 +7,78 @@ Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DI
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 ```
 
-**Pre-step guard — conflict detection:**
+---
+
+## Path A: Import existing project (`IMPORT_MODE = true`)
+
+If user chose "Add to existing project" in the coordinator:
+
+```bash
+python3 "$MANIFEST_OPS" step-start \
+  --manifest ".coco-agent/$PROJECT_NAME/manifest.toml" --step step_1
+
+# Clone the existing project
+glab repo clone "$PROJECT_PATH" "$PROJECT_NAME"
+
+# Sparse copy CoCo CI + prompt files from template
+git clone --filter=blob:none --sparse \
+  https://gitlab.com/kameshsampath/gitlab-coco-agent \
+  /tmp/coco-tpl-$$
+git -C /tmp/coco-tpl-$$ sparse-checkout set .cortex/prompts
+
+mkdir -p "$PROJECT_NAME/.cortex/prompts"
+cp /tmp/coco-tpl-$$/.cortex/prompts/scan.md "$PROJECT_NAME/.cortex/prompts/"
+cp /tmp/coco-tpl-$$/.cortex/prompts/fix.md  "$PROJECT_NAME/.cortex/prompts/"
+# Merge .gitlab-ci.yml (append CoCo jobs if file already exists)
+if [ -f "$PROJECT_NAME/.gitlab-ci.yml" ]; then
+  echo "" >> "$PROJECT_NAME/.gitlab-ci.yml"
+  tail -n +10 /tmp/coco-tpl-$$/.gitlab-ci.yml >> "$PROJECT_NAME/.gitlab-ci.yml"
+  echo "⚠️ Merged CoCo jobs into existing .gitlab-ci.yml — review for conflicts"
+else
+  cp /tmp/coco-tpl-$$/.gitlab-ci.yml "$PROJECT_NAME/.gitlab-ci.yml"
+fi
+rm -rf /tmp/coco-tpl-$$
+
+# Initialize manifest
+PROJECT_URL="https://gitlab.com/$PROJECT_PATH"
+python3 "$MANIFEST_OPS" init \
+  --draft-path ".coco-agent/$PROJECT_NAME" \
+  --prefix     "$PREFIX" \
+  --repo-name  "$PROJECT_NAME" \
+  --visibility "" \
+  --run-mode   "$SKILL_MODE" \
+  --platform   "gitlab" \
+  --template-name "gitlab-coco-agent"
+python3 "$MANIFEST_OPS" move \
+  --from ".coco-agent/$PROJECT_NAME" \
+  --to   "$PROJECT_NAME/.coco-agent" \
+  --repo-path "$PROJECT_PATH" \
+  --repo-url  "$PROJECT_URL"
+
+# Commit CoCo files to existing project
+git -C "$PROJECT_NAME" add .cortex/ .gitlab-ci.yml .coco-agent/
+git -C "$PROJECT_NAME" commit -m "ci: add CoCo scan+fix pipeline and manifest [skip ci]"
+git -C "$PROJECT_NAME" push
+```
+
+> ⚠️ Note: Pipelines are NOT disabled — the existing project may have active CI.
+> Step-2 will offer to disable pipelines temporarily during Snowflake setup.
+> Disabling affects ALL pipelines in the project, not just CoCo.
+
+```bash
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
+```
+
+### What we did (import path)
+- Cloned `$PROJECT_PATH` into `./$PROJECT_NAME`
+- Copied/merged `.gitlab-ci.yml`, `scan.md`, `fix.md` from template
+- Manifest initialized and committed
+
+---
+
+## Path B: New project from template (`IMPORT_MODE = false`)
+
+
 ```bash
 glab api "projects/$ENCODED_PATH" 2>&1
 ```

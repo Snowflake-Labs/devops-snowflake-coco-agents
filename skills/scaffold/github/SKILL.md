@@ -125,6 +125,26 @@ Read `skills/scaffold/references/output-format.md` (formatting rules).
 
 Collect all inputs before Create Project.
 
+0. **Project type** — ask first:
+   ```
+   ask_user_question:
+     header: "Project type"
+     question: "Create a new GitHub repo from template, or add CoCo to an existing repo?"
+     options:
+       - label: "New repo (from template)"
+       - label: "Add to existing repo"
+   ```
+   If "Add to existing repo": set `IMPORT_MODE = true`. Skip stopping points 1–2. Ask:
+   ```
+   ask_user_question:
+     header: "Existing repo"
+     question: "Which repo should CoCo be added to?"
+     type: text
+     defaultValue: "<login>/my-repo"
+   ```
+   Verify: `gh api "repos/$REPO_PATH" --jq '{name,visibility}'` — must succeed.
+   Set `REPO_NAME="${REPO_PATH##*/}"`. Skip draft manifest and go directly to step-1 import path.
+
 1. **Target repo** — detect login: `gh api user --jq .login`. Use petname as `defaultValue`.
    ```
    ask_user_question:
