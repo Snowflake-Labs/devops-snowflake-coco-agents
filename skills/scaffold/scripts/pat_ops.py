@@ -5,8 +5,9 @@ stores it in macOS Keychain, and can revoke it when the smoke test is done.
 Token is never printed — it flows Snowflake → Keychain → CI secret directly.
 
 Usage:
-  python3 pat_ops.py create --user KAMESHS_GH_REPO_COCO_AGENT_USER --manifest path/to/manifest.toml
-  python3 pat_ops.py revoke --user KAMESHS_GH_REPO_COCO_AGENT_USER --manifest path/to/manifest.toml
+  python3 pat_ops.py create --user SF_USER --account ACCOUNT --manifest MANIFEST
+  python3 pat_ops.py revoke --user SF_USER --account ACCOUNT --manifest MANIFEST
+  python3 pat_ops.py service-name --user SF_USER --account ACCOUNT
 """
 
 from __future__ import annotations
@@ -17,9 +18,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-KEYCHAIN_SERVICE = "coco-snowflake-pat"
 PAT_SUFFIX = "_COCO_PAT"
 EXPIRY_DAYS = 1
+
+
+def _keychain_service(account: str, user: str) -> str:
+    """Deterministic Keychain service name — unique per (account, user).
+
+    Formula: coco-sf-{account}-{user}, both normalised to lowercase-hyphen.
+    Reconstructable anywhere the skill knows SNOWFLAKE_ACCOUNT + SF_USER.
+    """
+    norm = str.maketrans("_", "-")
+    return f"coco-sf-{account.lower().translate(norm)}-{user.lower().translate(norm)}"
 
 
 def _snow_sql(query: str) -> list[dict]:
@@ -34,7 +44,7 @@ def _snow_sql(query: str) -> list[dict]:
     return json.loads(result.stdout) if result.stdout.strip() else []
 
 
-def _keychain(action: str, user: str, token: str | None = None) -> str | None:
+def _keychain(action: str, service: str, user: str, token: str | None = None) -> str | None:
     if action == "store":
         subprocess.run(
             [
@@ -42,7 +52,7 @@ def _keychain(action: str, user: str, token: str | None = None) -> str | None:
                 "add-generic-password",
                 "-U",
                 "-s",
-                KEYCHAIN_SERVICE,
+                service,
                 "-a",
                 user,
                 "-w",
@@ -54,14 +64,14 @@ def _keychain(action: str, user: str, token: str | None = None) -> str | None:
         return None
     if action == "fetch":
         r = subprocess.run(
-            ["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", user, "-w"],
+            ["security", "find-generic-password", "-s", service, "-a", user, "-w"],
             capture_output=True,
             text=True,
         )
         return r.stdout.strip() if r.returncode == 0 else None
     if action == "delete":
         subprocess.run(
-            ["security", "delete-generic-password", "-s", KEYCHAIN_SERVICE, "-a", user],
+            ["security", "delete-generic-password", "-s", service, "-a", user],
             capture_output=True,
         )
         return None
@@ -75,6 +85,7 @@ def _manifest_ops(manifest: str, *extra_args: str) -> None:
 
 
 def cmd_create(args: argparse.Namespace) -> int:
+    svc = _keychain_service(args.account, args.user)
     pat_name = args.user + PAT_SUFFIX
     rows = _snow_sql(
         f"ALTER USER {args.user} ADD PROGRAMMATIC ACCESS TOKEN {pat_name} "
@@ -88,20 +99,27 @@ def cmd_create(args: argparse.Namespace) -> int:
     if not token:
         print("Error: PAT token not found in SQL output", file=sys.stderr)
         return 1
-    _keychain("store", args.user, token)
+    _keychain("store", svc, args.user, token)
     if args.manifest:
         _manifest_ops(args.manifest, "fill-pat", "--pat-name", pat_name)
-    print(f"✓ PAT {pat_name} created (expires {EXPIRY_DAYS}d) — stored in Keychain")
+    print(f"✓ PAT {pat_name} created (expires {EXPIRY_DAYS}d) — Keychain service: {svc}")
     return 0
 
 
 def cmd_revoke(args: argparse.Namespace) -> int:
+    svc = _keychain_service(args.account, args.user)
     pat_name = args.user + PAT_SUFFIX
     _snow_sql(f"ALTER USER {args.user} DROP PROGRAMMATIC ACCESS TOKEN {pat_name};")
-    _keychain("delete", args.user)
+    _keychain("delete", svc, args.user)
     if args.manifest:
         _manifest_ops(args.manifest, "fill-pat", "--pat-name", "")
     print(f"✓ PAT {pat_name} revoked and removed from Keychain")
+    return 0
+
+
+def cmd_service_name(args: argparse.Namespace) -> int:
+    """Print the Keychain service name — used in skill steps for `security` calls."""
+    print(_keychain_service(args.account, args.user))
     return 0
 
 
@@ -112,13 +130,20 @@ def main() -> int:
     for cmd in ("create", "revoke"):
         p = sub.add_parser(cmd)
         p.add_argument("--user", required=True)
+        p.add_argument("--account", required=True, help="Snowflake account identifier")
         p.add_argument("--manifest", default="", help="Manifest path to persist pat_name")
+
+    sn = sub.add_parser("service-name", help="Print Keychain service name")
+    sn.add_argument("--user", required=True)
+    sn.add_argument("--account", required=True)
 
     args = parser.parse_args()
     if args.command == "create":
         return cmd_create(args)
     if args.command == "revoke":
         return cmd_revoke(args)
+    if args.command == "service-name":
+        return cmd_service_name(args)
     parser.print_help()
     return 1
 

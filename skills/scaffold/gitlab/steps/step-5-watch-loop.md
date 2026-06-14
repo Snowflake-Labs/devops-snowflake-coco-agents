@@ -96,7 +96,7 @@ PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
 SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
 PAT_NAME=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.pat_name 2>/dev/null || echo "")
 if [ -n "$PAT_NAME" ]; then
-  python3 "$PAT_OPS" revoke --user "$SF_USER" --manifest "$MANIFEST"
+  python3 "$PAT_OPS" revoke --user "$SF_USER" --account "$SNOWFLAKE_ACCOUNT" --manifest "$MANIFEST"
   glab variable delete SNOWFLAKE_PAT
   glab variable delete SNOWFLAKE_USER
 else

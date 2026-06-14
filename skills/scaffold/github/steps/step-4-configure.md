@@ -150,9 +150,10 @@ python3 "$MANIFEST_OPS" fill-runner \
 
 # Create 1-day PAT — token stored in Keychain, never shown
 PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-python3 "$PAT_OPS" create --user "$SF_USER" --manifest "$MANIFEST"
-# Pipe from Keychain → secret (token never in shell)
-security find-generic-password -s "coco-snowflake-pat" -a "$SF_USER" -w \
+python3 "$PAT_OPS" create --user "$SF_USER" --account "$SNOWFLAKE_ACCOUNT" --manifest "$MANIFEST"
+# Derive service name deterministically, pipe to secret (token never shown)
+KEYCHAIN_SVC=$(python3 "$PAT_OPS" service-name --user "$SF_USER" --account "$SNOWFLAKE_ACCOUNT")
+security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w \
   | gh secret set SNOWFLAKE_PAT --repo "$REPO_PATH"
 gh secret set SNOWFLAKE_USER --repo "$REPO_PATH" --body "$SF_USER"
 ```
