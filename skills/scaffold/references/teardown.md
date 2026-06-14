@@ -64,16 +64,32 @@ fi
 
 ## Snowflake DROP Statements
 
+**SQL guard — validate names before dropping.** Object names are read from the
+manifest and must match the `*_COCO_AGENT_{USER|ROLE|WH}` pattern. This prevents
+accidentally dropping objects that weren't created by this scaffold.
+
+```bash
+# Guard: abort if any name doesn't match the COCO_AGENT pattern
+for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
+  if [[ ! "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]]; then
+    echo "⚠️  Guard blocked: '$_obj' does not match COCO_AGENT naming — aborting Snowflake drop"
+    exit 1
+  fi
+done
+```
+
 Show these verbatim in the "What we'll drop" plan preview:
 
 ```sql
--- Run as ACCOUNTADMIN via: snow sql -f teardown.sql -D "PREFIX=$PREFIX"
-DROP USER      IF EXISTS <snowflake.user>;
-DROP WAREHOUSE IF EXISTS <snowflake.warehouse>;
-DROP ROLE      IF EXISTS <snowflake.role>;
+DROP USER      IF EXISTS $SF_USER;
+DROP WAREHOUSE IF EXISTS $SF_WH;
+DROP ROLE      IF EXISTS $SF_ROLE;
 ```
 
-Substitute actual names from manifest: `$SF_USER`, `$SF_WH`, `$SF_ROLE`.
+Execute (inline — does not rely on teardown.sql in the repo):
+```bash
+snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
+```
 
 ---
 

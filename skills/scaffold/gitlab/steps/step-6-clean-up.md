@@ -81,8 +81,11 @@ if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
   glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
 fi
 
-snow sql -f "$PROJECT_NAME/snowflake/teardown.sql" \
-  -D "PREFIX=$PREFIX" --enable-templating STANDARD
+# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
+for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
+  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
+done
+snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
 glab project delete "$PROJECT_PATH" --yes
 rm -rf "$PROJECT_NAME"
 rm -rf ".coco-agent/$PROJECT_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
@@ -109,8 +112,11 @@ PYEOF
 fi
 
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
-snow sql -f "$PROJECT_NAME/snowflake/teardown.sql" \
-  -D "PREFIX=$PREFIX" --enable-templating STANDARD
+# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
+for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
+  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
+done
+snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
 rm -rf "$PROJECT_NAME/.coco-agent/"
 echo "✓ Snowflake resources dropped. Project kept at $PROJECT_URL"
 ```

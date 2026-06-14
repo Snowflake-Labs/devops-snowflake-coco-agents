@@ -80,7 +80,11 @@ if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
   "$REPO_NAME/.github/runner/config.sh" remove --token "$REMOVE_TOKEN"
 fi
 
-snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
+# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
+for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
+  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
+done
+snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
 gh repo delete "$REPO_PATH" --yes
 rm -rf "$REPO_NAME"
 rm -rf ".coco-agent/$REPO_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
@@ -102,7 +106,11 @@ if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
 fi
 
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": false}'
-snow sql -f "$REPO_NAME/snowflake/teardown.sql" -D "PREFIX=$PREFIX"
+# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
+for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
+  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
+done
+snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
 rm -rf "$REPO_NAME/.coco-agent/"
 echo "✓ Snowflake resources dropped. Repo kept at $REPO_URL"
 ```

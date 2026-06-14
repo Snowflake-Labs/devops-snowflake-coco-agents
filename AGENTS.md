@@ -27,6 +27,9 @@ Examples:
 - All user interactions must go through `ask_user_question`
 - Collect all required inputs at Stopping Points before any action that creates resources
 - Use `enter_plan_mode` + `exit_plan_mode` around each beat's confirmation (single confirm, not multiple raw asks)
+- **Skip plan mode** when a beat contains only a single command or a read-only/status
+  check — the ceremony adds no value. Use plan mode when: multiple steps run together,
+  the action is destructive/irreversible, or the user needs to review values before proceeding.
 - Three-point beat structure: "What I'll do" → execute → "What we did"
 
 ## .agentignore
