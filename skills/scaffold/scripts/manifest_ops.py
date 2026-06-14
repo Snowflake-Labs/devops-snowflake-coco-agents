@@ -29,9 +29,9 @@ Schema (both GitHub and GitLab, identical structure):
     created_at = "2026-06-13T10:00:00Z"
 
     [snowflake]
-    user      = "KSAMPATH_GITHUB_COCO_AGENT_USER"
-    role      = "KSAMPATH_GITHUB_COCO_AGENT_ROLE"
-    warehouse = "KSAMPATH_GITHUB_COCO_AGENT_WH"
+    user      = "KSAMPATH_GH_ATOMIC_RUNNER_COCO_AGENT_USER"
+    role      = "KSAMPATH_GH_ATOMIC_RUNNER_COCO_AGENT_ROLE"
+    warehouse = "KSAMPATH_GH_ATOMIC_RUNNER_COCO_AGENT_WH"
 
     [runner]
     installed  = false
@@ -67,6 +67,7 @@ import argparse
 import contextlib
 import datetime
 import os
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -379,15 +380,16 @@ def cmd_fill_snowflake(args: argparse.Namespace) -> int:
     if not data:
         print(f"Error: manifest not found: {args.manifest}", file=sys.stderr)
         return 1
-    suffix = "GITHUB" if args.platform == "github" else "GITLAB"
+    suffix = "GH" if args.platform == "github" else "GL"
     p = args.prefix.upper()
+    r = re.sub(r"[^A-Z0-9]", "_", args.repo_name.upper())
     data["snowflake"] = {
-        "user": f"{p}_{suffix}_COCO_AGENT_USER",
-        "role": f"{p}_{suffix}_COCO_AGENT_ROLE",
-        "warehouse": f"{p}_{suffix}_COCO_AGENT_WH",
+        "user": f"{p}_{suffix}_{r}_COCO_AGENT_USER",
+        "role": f"{p}_{suffix}_{r}_COCO_AGENT_ROLE",
+        "warehouse": f"{p}_{suffix}_{r}_COCO_AGENT_WH",
     }
     save_manifest(args.manifest, data)
-    print(f"✓ [snowflake] filled with {p}_{suffix}_COCO_AGENT_* names")
+    print(f"✓ [snowflake] filled with {p}_{suffix}_{r}_COCO_AGENT_* names")
     return 0
 
 
@@ -520,6 +522,7 @@ def _build_parser() -> argparse.ArgumentParser:
     pfs = sub.add_parser("fill-snowflake", help="Fill [snowflake] with derived object names")
     pfs.add_argument("--manifest", required=True)
     pfs.add_argument("--prefix", required=True)
+    pfs.add_argument("--repo-name", required=True)
     pfs.add_argument("--platform", required=True, choices=["github", "gitlab"])
 
     # fill-runner

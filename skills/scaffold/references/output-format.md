@@ -27,8 +27,8 @@ fenced block for command previews:
 
 | Object    | Value                          |
 |-----------|--------------------------------|
-| Role      | ${PREFIX}_GITHUB_COCO_AGENT_ROLE |
-| Warehouse | ${PREFIX}_GITHUB_COCO_AGENT_WH   |
+| Role      | ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_ROLE |
+| Warehouse | ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_WH   |
 ```
 
 Or for command previews:
@@ -49,9 +49,9 @@ Use a heading followed by a bullet list:
 
 ```
 ### What we did
-- Role created: ${PREFIX}_GITHUB_COCO_AGENT_ROLE
-- Warehouse created: ${PREFIX}_GITHUB_COCO_AGENT_WH
-- User created and verified: ${PREFIX}_GITHUB_COCO_AGENT_USER
+- Role created: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_ROLE
+- Warehouse created: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_WH
+- User created and verified: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER
 ```
 
 ---

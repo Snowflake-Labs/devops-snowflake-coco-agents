@@ -166,7 +166,7 @@ python3 "$MANIFEST_OPS" fill-snowflake \
   --manifest "$MANIFEST" \
   --prefix   "$PREFIX" \
   --platform "github"
-# Writes: ${PREFIX}_GITHUB_COCO_AGENT_USER / _ROLE / _WH
+# Writes: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER / _ROLE / _WH
 ```
 
 ### fill-runner — persist PID after nohup launch

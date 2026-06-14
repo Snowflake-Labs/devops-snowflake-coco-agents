@@ -27,9 +27,9 @@ If not `"disabled"`:
 
 | Object | Value |
 |--------|-------|
-| Role | `${PREFIX}_GITLAB_COCO_AGENT_ROLE` |
-| Warehouse | `${PREFIX}_GITLAB_COCO_AGENT_WH` (XS, auto-suspend 60s) |
-| User | `${PREFIX}_GITLAB_COCO_AGENT_USER` (TYPE = SERVICE) |
+| Role | `${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_ROLE` |
+| Warehouse | `${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_WH` (XS, auto-suspend 60s) |
+| User | `${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_USER` (TYPE = SERVICE) |
 | Auth | `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://gitlab.com)` |
 | Subject | `project_path:$PROJECT_PATH:ref_type:branch:ref:main` |
 
@@ -48,16 +48,16 @@ snow sql -f "$PROJECT_NAME/snowflake/setup.sql" \
 
 **Post-step verification:**
 ```bash
-snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
-snow sql -q "SHOW ROLES LIKE '${PREFIX}_GITLAB_COCO_AGENT_ROLE'" --format json 2>&1
-snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITLAB_COCO_AGENT_WH'" --format json 2>&1
+snow sql -q "DESC USER ${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_USER" --format json 2>&1
+snow sql -q "SHOW ROLES LIKE '${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_ROLE'" --format json 2>&1
+snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GL_${REPO_NAME_NORM}_COCO_AGENT_WH'" --format json 2>&1
 ```
 If any return empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found after provisioning. Re-run this step.
 
 ```bash
 python3 "$MANIFEST_OPS" fill-snowflake \
-  --manifest "$MANIFEST" --prefix "$PREFIX" --platform "gitlab"
+  --manifest "$MANIFEST" --prefix "$PREFIX" --repo-name "$REPO_NAME" --platform "gitlab"
 
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_3
 ```

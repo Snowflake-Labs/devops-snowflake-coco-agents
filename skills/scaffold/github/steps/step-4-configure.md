@@ -5,12 +5,15 @@
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
 ```bash
 MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"
+SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
+SF_ROLE=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.role)
+SF_WH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.warehouse)
 ```
 
 **Gate check (staleness-aware):**
 ```bash
 python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_3 \
-  || snow sql -q "DESC USER ${PREFIX}_GITHUB_COCO_AGENT_USER" --format json 2>&1
+  || snow sql -q "DESC USER $SF_USER" --format json 2>&1
 ```
 If empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found. Complete Step 3 first.
@@ -29,8 +32,8 @@ If empty or error:
 | Secret | Value |
 |--------|-------|
 | `SNOWFLAKE_ACCOUNT` | `$SNOWFLAKE_ACCOUNT` |
-| `SNOWFLAKE_ROLE` | `${PREFIX}_GITHUB_COCO_AGENT_ROLE` |
-| `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITHUB_COCO_AGENT_WH` |
+| `SNOWFLAKE_ROLE` | `$SF_ROLE` |
+| `SNOWFLAKE_WAREHOUSE` | `$SF_WH` |
 
 Call `exit_plan_mode`. Then execute directly:
 
@@ -38,8 +41,8 @@ Call `exit_plan_mode`. Then execute directly:
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 
 gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT"
-gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "${PREFIX}_GITHUB_COCO_AGENT_ROLE"
-gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "${PREFIX}_GITHUB_COCO_AGENT_WH"
+gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "$SF_ROLE"
+gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "$SF_WH"
 ```
 
 **Post-step verification:**

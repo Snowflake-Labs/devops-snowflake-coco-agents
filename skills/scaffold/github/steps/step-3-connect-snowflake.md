@@ -27,9 +27,9 @@ If enabled is `true`:
 
 | Object | Value |
 |--------|-------|
-| Role | `${PREFIX}_GITHUB_COCO_AGENT_ROLE` |
-| Warehouse | `${PREFIX}_GITHUB_COCO_AGENT_WH` (XS, auto-suspend 60s) |
-| User | `${PREFIX}_GITHUB_COCO_AGENT_USER` (TYPE = SERVICE) |
+| Role | `${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_ROLE` |
+| Warehouse | `${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_WH` (XS, auto-suspend 60s) |
+| User | `${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER` (TYPE = SERVICE) |
 | Auth | `WORKLOAD_IDENTITY = (TYPE = OIDC ISSUER = https://token.actions.githubusercontent.com)` |
 | Subject | `repo:$REPO_PATH:ref:refs/heads/main` |
 
@@ -47,16 +47,16 @@ snow sql -f "$REPO_NAME/snowflake/setup.sql" \
 
 **Post-step verification:**
 ```bash
-snow sql -q "DESC USER ${PREFIX}_GITHUB_COCO_AGENT_USER" --format json 2>&1
-snow sql -q "SHOW ROLES LIKE '${PREFIX}_GITHUB_COCO_AGENT_ROLE'" --format json 2>&1
-snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GITHUB_COCO_AGENT_WH'" --format json 2>&1
+snow sql -q "DESC USER ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER" --format json 2>&1
+snow sql -q "SHOW ROLES LIKE '${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_ROLE'" --format json 2>&1
+snow sql -q "SHOW WAREHOUSES LIKE '${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_WH'" --format json 2>&1
 ```
 If any return empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found after provisioning. Re-run this step.
 
 ```bash
 python3 "$MANIFEST_OPS" fill-snowflake \
-  --manifest "$MANIFEST" --prefix "$PREFIX" --platform "github"
+  --manifest "$MANIFEST" --prefix "$PREFIX" --repo-name "$REPO_NAME" --platform "github"
 
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_3
 ```

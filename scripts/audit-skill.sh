@@ -8,14 +8,20 @@ if ! cortex exec --help > /dev/null 2>&1; then
   exit 0
 fi
 
-OUTPUT=$(cortex exec \
+# Run non-interactively: stdin from /dev/null prevents permission prompts from hanging.
+# 120s timeout guards against slow LLM calls in pre-commit.
+OUTPUT=$(timeout 120 cortex exec \
   "Run a skill-development audit on the scaffold skills in skills/scaffold/. \
 Check: coordinator SKILL.md files use plan mode correctly, step files use \
 ask_user_question for all user interactions, no sensitive values are echoed, \
 references/manifest.md is the canonical source for shared content (not inlined \
 in step files). Report each violation clearly. \
 End your response with exactly one of: SKILL_AUDIT_PASS or SKILL_AUDIT_FAIL" \
-  --bypass --no-history --allowed "Read" 2>&1)
+  --bypass --no-history --allowed "Read" --allowed "Glob" --allowed "Grep" \
+  < /dev/null 2>&1) || {
+  echo "cortex exec timed out or failed — skipping LLM skill audit"
+  exit 0
+}
 
 echo "$OUTPUT"
 

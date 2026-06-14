@@ -104,6 +104,18 @@ snow connection test
 ```
 If fails, ask user to configure `~/.snowflake/connections.toml` and retry.
 
+**Check 3 — git:**
+```bash
+git --version 2>&1
+```
+If missing, ask user to install git and retry.
+
+**Check 4 — python3 (3.11+):**
+```bash
+python3 --version 2>&1
+```
+If missing or below 3.11, ask user to install Python 3.11+ and retry.
+
 ## Run Mode, Project Name, and Output Format
 
 Read `skills/scaffold/references/run-mode.md` (Steps A–D: sets `$SKILL_MODE`, `$PREFIX`, `$SNOWFLAKE_ACCOUNT`, petname).

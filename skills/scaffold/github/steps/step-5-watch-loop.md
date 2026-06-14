@@ -8,11 +8,16 @@ Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DI
 MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"
 ```
 
-**Enable Actions first** (must happen before the runner can pick up jobs):
+**Step 1 — Enable Actions** (was disabled during setup — must happen before push kicks workflow):
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" \
   -X PUT --input - <<<'{"enabled": true}'
 ```
+**Verify enabled:**
+```bash
+gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
+```
+Expected: `true`. If not, stop — Actions must be enabled before pushing.
 
 **Gate check — runner online (staleness-aware, 300s threshold):**
 ```bash
@@ -35,10 +40,11 @@ If 0:
 
 **What we'll do**
 ```
-Step 1: write smoke-test app (3 files) to $REPO_NAME/demo/
-Step 2: commit + push  →  scan workflow triggers on the runner
-Step 3: show Actions URL
-Step 4: revert when done  (git revert HEAD --no-edit && git push)
+Step 1: confirm Actions enabled (already done above)
+Step 2: write smoke-test app (3 files) to $REPO_NAME/demo/
+Step 3: commit + push  →  scan workflow triggers on the runner
+Step 4: confirm workflow started — show Actions URL
+Step 5: revert + push when done  (git revert HEAD --no-edit && git push)
 ```
 
 Call `exit_plan_mode`. Then execute directly:
@@ -57,8 +63,10 @@ git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
 ```
 
+**Confirm workflow triggered** (mandatory — do not continue until push is confirmed):
 ```bash
 echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
+gh run list --repo "$REPO_PATH" --limit 3
 ```
 
 ### What we did
@@ -68,7 +76,7 @@ echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
 
 See `skills/scaffold/references/smoke-test.md` for expected output.
 
-**Step 4 — Revert when done:**
+**Step 5 — Revert when done** (push is mandatory — triggers cleanup run):
 ```bash
 cd "$REPO_NAME" && git revert HEAD --no-edit && git push
 ```

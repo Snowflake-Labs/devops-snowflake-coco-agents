@@ -5,12 +5,15 @@
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
 ```bash
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
+SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
+SF_ROLE=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.role)
+SF_WH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.warehouse)
 ```
 
 **Gate check (staleness-aware):**
 ```bash
 python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_3 \
-  || snow sql -q "DESC USER ${PREFIX}_GITLAB_COCO_AGENT_USER" --format json 2>&1
+  || snow sql -q "DESC USER $SF_USER" --format json 2>&1
 ```
 If empty or error:
 > ⚠️ **Gate check failed:** OIDC user not found. Complete Step 3 first.
@@ -28,8 +31,8 @@ If empty or error:
 | Variable | Value | Masked |
 |----------|-------|--------|
 | `SNOWFLAKE_ACCOUNT` | `$SNOWFLAKE_ACCOUNT` | yes |
-| `SNOWFLAKE_USER` | `${PREFIX}_GITLAB_COCO_AGENT_USER` | no |
-| `SNOWFLAKE_WAREHOUSE` | `${PREFIX}_GITLAB_COCO_AGENT_WH` | no |
+| `SNOWFLAKE_USER` | `$SF_USER` | no |
+| `SNOWFLAKE_WAREHOUSE` | `$SF_WH` | no |
 | `GITLAB_TOKEN_coco` | (provided token) | yes |
 
 Call `exit_plan_mode`. Then execute directly:
@@ -39,8 +42,8 @@ python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 
 cd "$PROJECT_NAME"
 glab variable set SNOWFLAKE_ACCOUNT   --value "$SNOWFLAKE_ACCOUNT"   --masked
-glab variable set SNOWFLAKE_USER      --value "${PREFIX}_GITLAB_COCO_AGENT_USER"
-glab variable set SNOWFLAKE_WAREHOUSE --value "${PREFIX}_GITLAB_COCO_AGENT_WH"
+glab variable set SNOWFLAKE_USER      --value "$SF_USER"
+glab variable set SNOWFLAKE_WAREHOUSE --value "$SF_WH"
 glab variable set GITLAB_TOKEN_coco   --value "$GITLAB_TOKEN_coco"   --masked
 ```
 

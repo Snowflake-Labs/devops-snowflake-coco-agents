@@ -8,10 +8,15 @@ Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DI
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 ```
 
-**Enable pipelines first** (must happen before the runner can pick up jobs):
+**Step 1 — Enable pipelines** (was disabled during setup — must happen before push kicks workflow):
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
 ```
+**Verify enabled:**
+```bash
+glab api "projects/$ENCODED_PATH" --jq .builds_access_level
+```
+Expected: `enabled`. If not, stop — pipelines must be enabled before pushing.
 
 **Gate check — runner online (staleness-aware, 300s threshold):**
 ```bash
@@ -35,10 +40,11 @@ If 0:
 
 **What we'll do**
 ```
-Step 1: write smoke-test app (3 files) to $PROJECT_NAME/demo/
-Step 2: commit + push  →  scan-code job triggers on the runner
-Step 3: trigger pipeline + show URL
-Step 4: revert when done  (git revert HEAD --no-edit && git push)
+Step 1: confirm pipelines enabled (already done above)
+Step 2: write smoke-test app (3 files) to $PROJECT_NAME/demo/
+Step 3: commit + push  →  scan-code job triggers on the runner
+Step 4: confirm pipeline started — show pipelines URL
+Step 5: revert + push when done  (git revert HEAD --no-edit && git push)
 ```
 
 Call `exit_plan_mode`. Then execute directly:
@@ -57,9 +63,10 @@ git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
 git push
 ```
 
+**Confirm pipeline triggered** (mandatory — do not continue until push is confirmed):
 ```bash
-glab pipeline run --branch main
 echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
+glab pipeline list --project "$PROJECT_PATH" 2>&1 | head -5
 ```
 
 ### What we did
@@ -69,7 +76,7 @@ echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
 
 See `skills/scaffold/references/smoke-test.md` for expected output.
 
-**Step 4 — Revert when done:**
+**Step 5 — Revert when done** (push is mandatory — triggers cleanup run):
 ```bash
 cd "$PROJECT_NAME" && git revert HEAD --no-edit && git push
 ```
