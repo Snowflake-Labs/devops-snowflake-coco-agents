@@ -1,7 +1,6 @@
-# Step 6: Clean Up
+# Step 6: Clean Up (Router)
 
-> Part of the GitLab scaffold skill. Load when executing Step 6.
-> For teardown ordering rules, see `references/teardown.md`.
+> Part of the GitLab scaffold skill.
 
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
 ```bash
@@ -21,10 +20,9 @@ ask_user_question:
 ```
 If "Keep everything" → stop.
 
-**Pre-flight: read manifest (see `references/teardown.md` for the full snippet)**
+**Pre-flight: read manifest**
 ```bash
 if [ -f "$MANIFEST" ]; then
-  PREFIX=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.prefix)
   PROJECT_PATH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.repo_path)
   PROJECT_URL=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.repo_url)
   RUNNER_PID=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key runner.pid)
@@ -36,33 +34,9 @@ if [ -f "$MANIFEST" ]; then
 fi
 ```
 
-⚠️ MANDATORY: call `enter_plan_mode`. Then present:
+⚠️ MANDATORY: call `enter_plan_mode`. Present what will be dropped. Call `exit_plan_mode`.
 
-**Why this matters** (Guided mode only):
-> Resources left running cost credits. Teardown: disable CI first so no new
-> jobs fire, stop and deregister runner, drop Snowflake objects, delete the
-> remote project, then remove the local clone.
-
-**What we'll drop**
-```
-[tear down everything]
-  1. Disable pipelines
-  2. Kill runner (PID: $RUNNER_PID)
-  3. Deregister runner (ID: $RUNNER_ID)
-  4. DROP USER      IF EXISTS $SF_USER
-     DROP WAREHOUSE IF EXISTS $SF_WH
-     DROP ROLE      IF EXISTS $SF_ROLE
-  5. Delete remote: $PROJECT_URL
-  6. Delete local:  ./$PROJECT_NAME/ (manifest included)
-
-[Drop Snowflake only]
-  1. Kill runner + deregister + remove tags: [local] + push
-  2. Disable pipelines
-  3. Drop Snowflake (same 3 objects)
-  4. Delete .coco-agent/ only (project kept)
-```
-
-Call `exit_plan_mode`. Then ask (always fires — destructive and irreversible):
+Confirm (always fires — irreversible):
 ```
 ask_user_question:
   header: "Confirm teardown"
@@ -72,66 +46,14 @@ ask_user_question:
     - label: "Abort"
 ```
 
-**Execute — "tear down everything":**
+Set `TEARDOWN_MODE` based on user choice:
+- "tear down everything" → `TEARDOWN_MODE=full`
+- "Drop Snowflake only" → `TEARDOWN_MODE=snowflake-only`
+
+Load `gitlab/steps/step-6a-teardown.md`.
+If `TEARDOWN_MODE=full`: also load `gitlab/steps/step-6b-delete.md`.
+If `TEARDOWN_MODE=snowflake-only`:
 ```bash
-glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
-
-if [ "${RUNNER_PID:-0}" -gt 0 ]; then kill "$RUNNER_PID" 2>/dev/null || true; sleep 2; fi
-if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
-  glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
-fi
-
-# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
-for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
-  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
-done
-```
-
-Execute using the `snowflake_sql_execute` tool:
-```sql
-DROP USER      IF EXISTS $SF_USER;
-DROP WAREHOUSE IF EXISTS $SF_WH;
-DROP ROLE      IF EXISTS $SF_ROLE;
-```
-glab project delete "$PROJECT_PATH" --yes
-rm -rf "$PROJECT_NAME"
-rm -rf ".coco-agent/$PROJECT_NAME" 2>/dev/null; rmdir ".coco-agent" 2>/dev/null || true
-echo "✓ $PROJECT_NAME removed — environment is clean"
-```
-
-**Execute — "Drop Snowflake only":**
-```bash
-if [ "${RUNNER_PID:-0}" -gt 0 ]; then kill "$RUNNER_PID" 2>/dev/null || true; sleep 2; fi
-if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
-  glab api "projects/$ENCODED_PATH/runners/$RUNNER_ID" -X DELETE
-  python3 - << 'PYEOF'
-import re, os
-path = os.environ.get("PROJECT_NAME", ".") + "/.gitlab-ci.yml"
-content = open(path).read()
-for job in ["scan-code", "coco-agent"]:
-    content = re.sub(rf"^({job}:)\n  tags: \[local\]", rf"\1", content, flags=re.MULTILINE)
-open(path, "w").write(content)
-print("Reverted: tags: [local] removed")
-PYEOF
-  git -C "$PROJECT_NAME" add .gitlab-ci.yml
-  git -C "$PROJECT_NAME" commit -m "ci: restore default runner [skip ci]"
-  git -C "$PROJECT_NAME" push
-fi
-
-glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
-# Guard: abort if names don't match COCO_AGENT pattern (see references/teardown.md)
-for _obj in "$SF_USER" "$SF_WH" "$SF_ROLE"; do
-  [[ "$_obj" =~ _COCO_AGENT_(USER|ROLE|WH)$ ]] || { echo "⚠️  Guard blocked: '$_obj' — aborting"; exit 1; }
-done
-snow sql -q "DROP USER IF EXISTS $SF_USER; DROP WAREHOUSE IF EXISTS $SF_WH; DROP ROLE IF EXISTS $SF_ROLE;"
 rm -rf "$PROJECT_NAME/.coco-agent/"
 echo "✓ Snowflake resources dropped. Project kept at $PROJECT_URL"
 ```
-
-### What we did
-- CI disabled, runner stopped and deregistered
-- Snowflake objects dropped: `$SF_USER / $SF_WH / $SF_ROLE`
-- [tear down everything] Project deleted and local clone removed
-- [Drop Snowflake only] Manifest removed — re-run scaffold to set up again
-
-> ✓ **Done:** Environment is clean.

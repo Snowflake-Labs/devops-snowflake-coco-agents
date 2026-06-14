@@ -1,0 +1,29 @@
+# Shared: Snowflake Setup SQL
+
+Execute using the `snowflake_sql_execute` tool with values provided by the calling step
+(`$SF_ROLE`, `$SF_USER`, `$SF_WH`, `$OIDC_ISSUER`, `$OIDC_SUBJECT`):
+
+```sql
+USE ROLE ACCOUNTADMIN;
+CREATE ROLE IF NOT EXISTS $SF_ROLE;
+GRANT ROLE $SF_ROLE TO ROLE SYSADMIN;
+CREATE WAREHOUSE IF NOT EXISTS $SF_WH
+  WAREHOUSE_SIZE = 'X-SMALL' AUTO_SUSPEND = 60 AUTO_RESUME = TRUE;
+GRANT USAGE ON WAREHOUSE $SF_WH TO ROLE $SF_ROLE;
+GRANT DATABASE ROLE SNOWFLAKE.CORTEX_USER TO ROLE $SF_ROLE;
+CREATE USER IF NOT EXISTS $SF_USER
+  TYPE = SERVICE DEFAULT_ROLE = $SF_ROLE DEFAULT_WAREHOUSE = $SF_WH;
+GRANT ROLE $SF_ROLE TO USER $SF_USER;
+ALTER USER $SF_USER SET
+  WORKLOAD_IDENTITY = (
+    TYPE    = OIDC
+    ISSUER  = '$OIDC_ISSUER'
+    SUBJECT = '$OIDC_SUBJECT'
+  );
+```
+
+**Post-creation verify** (use `snowflake_sql_execute`):
+```sql
+DESC USER $SF_USER;
+```
+If empty or error: OIDC user not created — re-run step.

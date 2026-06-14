@@ -18,7 +18,7 @@ from pathlib import Path
 SCAFFOLD = Path(__file__).parent.parent / "skills" / "scaffold"
 
 COORDINATOR_LIMIT = 500
-STEP_LIMIT = 200
+STEP_LIMIT = 80
 
 # Sentinel that must NOT appear in step files (indicates inlined SKILL_DIR block)
 INLINE_SENTINEL = 'find ~/.snowflake/cortex/plugins -name "manifest_ops.py"'
