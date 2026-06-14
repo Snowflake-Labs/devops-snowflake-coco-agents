@@ -90,6 +90,14 @@ glab api "projects/$ENCODED_PATH/protected_branches" \
   -F merge_access_level=40
 ```
 
+**Step 7 — Revoke smoke test PAT** (if local runner was used):
+```bash
+PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
+python3 "$PAT_OPS" revoke --user "$SF_USER" && \
+  glab variable delete SNOWFLAKE_PAT && \
+  glab variable delete SNOWFLAKE_USER
+```
+
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_5
 ```

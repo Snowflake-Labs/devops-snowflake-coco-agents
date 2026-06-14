@@ -105,16 +105,13 @@ If "Yes":
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
-**Why this matters** (Guided mode only):
-> A project-local runner lets you test the full loop before committing to
-> GitHub-hosted runners. It lives inside the repo and is removed cleanly on teardown.
-
 **What we'll do**
 ```
 Installs:   $REPO_NAME/.github/runner/  (gitignored)
 Configures: runner bound to https://github.com/$REPO_PATH
 Labels:     self-hosted, local
-Patches:    runs-on in cortex-scan.yml and cortex-fix.yml → [self-hosted, local]
+Patches:    runs-on → [self-hosted, local]
+PAT:        1-day service-user PAT created + stored in Keychain → SNOWFLAKE_PAT secret
 ```
 
 Call `exit_plan_mode`. Then execute directly:
@@ -150,6 +147,14 @@ grep -q "Listening for Jobs" "$REPO_NAME/.github/runner/runner.log" \
 
 python3 "$MANIFEST_OPS" fill-runner \
   --manifest "$MANIFEST" --pid "$RUNNER_PID" --runner-id ""
+
+# Create 1-day PAT — token stored in Keychain, never shown
+PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
+python3 "$PAT_OPS" create --user "$SF_USER"
+# Pipe from Keychain → secret (token never in shell)
+security find-generic-password -s "coco-snowflake-pat" -a "$SF_USER" -w \
+  | gh secret set SNOWFLAKE_PAT --repo "$REPO_PATH"
+gh secret set SNOWFLAKE_USER --repo "$REPO_PATH" --body "$SF_USER"
 ```
 
 ```
@@ -165,8 +170,7 @@ If "Not yet": `tail -20 "$REPO_NAME/.github/runner/runner.log"` and re-ask.
 
 **Post-step verification:**
 ```bash
-gh api "repos/$REPO_PATH/actions/runners" \
-  --jq '.runners[] | {name, status, labels: [.labels[].name]}'
+gh api "repos/$REPO_PATH/actions/runners" --jq '.runners[] | {name, status}'
 ```
 
 ```bash

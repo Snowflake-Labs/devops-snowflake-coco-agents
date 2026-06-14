@@ -142,6 +142,12 @@ grep -q "Listening for Jobs" "$PROJECT_NAME/.gitlab/runner/runner.log" \
 
 python3 "$MANIFEST_OPS" fill-runner \
   --manifest "$MANIFEST" --pid "$RUNNER_PID" --runner-id "$RUNNER_ID"
+
+# Create 1-day PAT — token stored in Keychain, never shown
+PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
+python3 "$PAT_OPS" create --user "$SF_USER"
+security find-generic-password -s "coco-snowflake-pat" -a "$SF_USER" -w \
+  | glab variable set SNOWFLAKE_PAT --masked
 ```
 
 ```
