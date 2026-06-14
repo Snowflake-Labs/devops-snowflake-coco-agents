@@ -20,20 +20,20 @@ If empty or error:
 
 ---
 
+⚠️ MANDATORY: collect `GITLAB_TOKEN_coco` via `ask_user_question` (header: "GitLab token", type: text).
+Before storing, validate the token has API access:
+```bash
+glab api user --token "$GITLAB_TOKEN_coco" --jq .username 2>&1
+```
+If empty/error: stop, ask user to generate a token with `api` scope.
+
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
 **Why this matters** (Guided mode only):
-> Four CI/CD variables give the pipeline its Snowflake auth context and GitLab
-> bot identity. `GITLAB_TOKEN_coco` authenticates issue/MR operations.
+> Six CI/CD variables: Snowflake auth context, local runner service-user PAT (no role creep), and GitLab bot token.
 
-**What we'll do**
-
-| Variable | Value | Masked |
-|----------|-------|--------|
-| `SNOWFLAKE_ACCOUNT` | `$SNOWFLAKE_ACCOUNT` | yes |
-| `SNOWFLAKE_USER` | `$SF_USER` | no |
-| `SNOWFLAKE_WAREHOUSE` | `$SF_WH` | no |
-| `GITLAB_TOKEN_coco` | (provided token) | yes |
+**What we'll do** — 6 CI/CD variables:
+`SNOWFLAKE_ACCOUNT` (masked), `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PAT` (masked, local runner), `GITLAB_TOKEN_coco` (masked).
 
 Call `exit_plan_mode`. Then execute directly:
 
@@ -44,6 +44,8 @@ cd "$PROJECT_NAME"
 glab variable set SNOWFLAKE_ACCOUNT   --value "$SNOWFLAKE_ACCOUNT"   --masked
 glab variable set SNOWFLAKE_USER      --value "$SF_USER"
 glab variable set SNOWFLAKE_WAREHOUSE --value "$SF_WH"
+glab variable set SNOWFLAKE_ROLE      --value "$SF_ROLE"
+glab variable set SNOWFLAKE_PAT       --value "$SNOWFLAKE_PAT"       --masked
 glab variable set GITLAB_TOKEN_coco   --value "$GITLAB_TOKEN_coco"   --masked
 ```
 
@@ -51,11 +53,12 @@ glab variable set GITLAB_TOKEN_coco   --value "$GITLAB_TOKEN_coco"   --masked
 ```bash
 glab variable list 2>&1
 ```
-Confirm `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `GITLAB_TOKEN_coco` are listed.
+Confirm `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_WAREHOUSE`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_PAT`, `GITLAB_TOKEN_coco` are listed.
 
 ### What we did
-- 4 CI/CD variables set on `$PROJECT_PATH`
-- Pipelines can now authenticate to Snowflake via OIDC and bot via `GITLAB_TOKEN_coco`
+- 6 CI/CD variables set on `$PROJECT_PATH`
+- Pipelines can authenticate to Snowflake via OIDC (cloud) or PAT (local runner)
+- Bot authenticates via `GITLAB_TOKEN_coco`
 
 ---
 
@@ -155,7 +158,7 @@ If "Not yet": `tail -20 "$PROJECT_NAME/.gitlab/runner/runner.log"` and re-ask.
 **Post-step verification:**
 ```bash
 glab api "projects/$ENCODED_PATH/runners" \
-  --jq '.[] | select(.description == "local-mac") | {id, status, tag_list}'
+  --jq '.[] | select(.description == "local-mac") | {id, status}'
 ```
 
 ```bash
@@ -177,5 +180,15 @@ ask_user_question:
     - label: "Yes, run smoke test and watch the loop"
       description: "Copies a 3-issue Python app into demo/, enables pipelines, commits and pushes"
     - label: "No, I'll push my own code later"
+      description: "Skips smoke test — branch protection applied immediately"
     - label: "Stop here"
+```
+
+If "No, I'll push my own code later": protect main immediately:
+```bash
+glab api "projects/$ENCODED_PATH/protected_branches" \
+  -X POST \
+  -F name=main \
+  -F push_access_level=0 \
+  -F merge_access_level=40
 ```

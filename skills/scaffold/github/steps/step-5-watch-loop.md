@@ -81,6 +81,22 @@ See `skills/scaffold/references/smoke-test.md` for expected output.
 cd "$REPO_NAME" && git revert HEAD --no-edit && git push
 ```
 
+**Step 6 — Protect main branch** (smoke test complete — safe to restrict direct pushes):
+```bash
+gh api "repos/$REPO_PATH/branches/main/protection" -X PUT \
+  --input - << 'EOF'
+{
+  "required_status_checks": null,
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": false
+  },
+  "restrictions": null
+}
+EOF
+```
+
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_5
 ```

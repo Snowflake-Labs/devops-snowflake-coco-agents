@@ -23,9 +23,9 @@ If empty or error:
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
 **Why this matters** (Guided mode only):
-> Three secrets tell the workflow which Snowflake context to use.
-> Combined with the OIDC token, this is the complete auth context —
-> no password, no API key is stored.
+> Three Snowflake secrets tell the workflow which context to use.
+> Two additional secrets pin the local runner to the service user (no role creep).
+> Workflow permissions let Actions create PRs without a personal token.
 
 **What we'll do**
 
@@ -34,6 +34,9 @@ If empty or error:
 | `SNOWFLAKE_ACCOUNT` | `$SNOWFLAKE_ACCOUNT` |
 | `SNOWFLAKE_ROLE` | `$SF_ROLE` |
 | `SNOWFLAKE_WAREHOUSE` | `$SF_WH` |
+| `SNOWFLAKE_USER` | `$SF_USER` (local runner only) |
+| `SNOWFLAKE_PAT` | `$SNOWFLAKE_PAT` (local runner only) |
+| Repo workflow permissions | `default_workflow_permissions=write`, `can_approve_pull_request_reviews=true` |
 
 Call `exit_plan_mode`. Then execute directly:
 
@@ -43,17 +46,26 @@ python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT"
 gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "$SF_ROLE"
 gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "$SF_WH"
+gh secret set SNOWFLAKE_USER      --repo "$REPO_PATH" --body "$SF_USER"
+gh secret set SNOWFLAKE_PAT       --repo "$REPO_PATH" --body "$SNOWFLAKE_PAT"
+
+# Allow Actions to create PRs (required for cortex-fix.yml to open fix PRs)
+gh api "repos/$REPO_PATH/actions/permissions/workflow" \
+  -X PUT \
+  --field default_workflow_permissions=write \
+  --field can_approve_pull_request_reviews=true
 ```
 
 **Post-step verification:**
 ```bash
 gh secret list --repo "$REPO_PATH" 2>&1
+gh api "repos/$REPO_PATH/actions/permissions/workflow" --jq '{permissions: .default_workflow_permissions, can_create_pr: .can_approve_pull_request_reviews}'
 ```
-Confirm `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_ROLE`, `SNOWFLAKE_WAREHOUSE` are listed.
+Confirm all 5 secrets listed and `can_create_pr: true`.
 
 ### What we did
-- 3 secrets set on `$REPO_PATH`
-- Workflows can now authenticate to Snowflake via OIDC
+- 5 secrets set on `$REPO_PATH` (Snowflake context + local runner identity)
+- Workflow permissions set: Actions can create PRs, write token is default
 
 ---
 
@@ -69,6 +81,22 @@ ask_user_question:
       description: "Installs to .github/runner/ — isolated per project, gitignored"
     - label: "Skip — use GitHub-hosted runners"
     - label: "Stop here"
+```
+
+If "No, I'll push my own code later": protect main immediately (smoke test skipped — no direct pushes needed):
+```bash
+gh api "repos/$REPO_PATH/branches/main/protection" -X PUT \
+  --input - << 'EOF'
+{
+  "required_status_checks": null,
+  "enforce_admins": false,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "dismiss_stale_reviews": false
+  },
+  "restrictions": null
+}
+EOF
 ```
 
 If "Skip": mark step complete and move on.
@@ -160,5 +188,6 @@ ask_user_question:
     - label: "Yes, run smoke test and watch the loop"
       description: "Copies a 3-issue Python app into demo/, enables Actions, commits and pushes"
     - label: "No, I'll push my own code later"
+      description: "Skips smoke test — branch protection applied immediately"
     - label: "Stop here"
 ```

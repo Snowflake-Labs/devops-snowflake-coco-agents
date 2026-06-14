@@ -81,6 +81,15 @@ See `skills/scaffold/references/smoke-test.md` for expected output.
 cd "$PROJECT_NAME" && git revert HEAD --no-edit && git push
 ```
 
+**Step 6 — Protect main branch** (smoke test complete — safe to restrict direct pushes):
+```bash
+glab api "projects/$ENCODED_PATH/protected_branches" \
+  -X POST \
+  -F name=main \
+  -F push_access_level=0 \
+  -F merge_access_level=40
+```
+
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_5
 ```
