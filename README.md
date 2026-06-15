@@ -2,6 +2,7 @@
 
 > Scaffold an autonomous scan-issue-fix pipeline on GitHub Actions or GitLab CI
 > in one CoCo conversation. No stored secrets. No manual provisioning.
+> **ICR 48** — one instruction, 48 distinct state-changing operations.
 
 [![Docs](https://img.shields.io/badge/docs-snowflake--labs.github.io-0074D9)](https://snowflake-labs.github.io/devops-snowflake-coco-agents/)
 
@@ -35,7 +36,7 @@ for a human.
    $devops-coco-agents:scaffold-for-gitlab   # GitLab CI
    ```
 
-Done in under 10 minutes.
+Done in under 10 minutes. The scaffold executes 48 state-changing operations so you don't have to.
 
 ---
 
