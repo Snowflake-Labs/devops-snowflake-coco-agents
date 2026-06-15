@@ -6,7 +6,7 @@ outputs are shown so you can verify before moving on.
 ## Pre-flight checklist
 
 - [ ] `gh auth status` — correct account is active
-- [ ] `snow connection test` — succeeds
+- [ ] `snow connection test --connection local-oauth` — succeeds
 - [ ] CoCo plugin installed: `cortex plugin list | grep devops-coco-agents`
 - [ ] Snowflake account identifier ready (e.g. `xy12345.us-east-1`)
 
@@ -15,11 +15,11 @@ outputs are shown so you can verify before moving on.
 Type in the CoCo chat panel:
 
 ```text
-scaffold for github
+/scaffold-for-github
 ```
 
-The skill asks: **Quick start or Full setup?** — choose Quick start for a 10-minute run,
-Full setup to also run the smoke test and watch issues + PRs appear.
+The skill asks: **Quick start or Full setup?** Choose Quick start for a 10-minute run,
+Full setup to also run the smoke test and walk through the smart-fix verification.
 
 ---
 
@@ -43,8 +43,10 @@ Clones:  ./nimble-proxy         (clean single commit — no template history)
 ```
 
 **Verify:**
-- New private repo visible at `https://github.com/ksampath/nimble-proxy`
-- Local directory `nimble-proxy/` created
+
+```bash
+gh repo view ksampath/nimble-proxy --json name,private,url
+```
 
 ---
 
@@ -69,9 +71,10 @@ CoCo provisions three Snowflake objects:
 | User | `DEMO_GH_NIMBLE_PROXY_COCO_AGENT_USER` (TYPE = SERVICE) |
 
 OIDC trust is bound to `repo:ksampath/nimble-proxy:ref:refs/heads/main`.
-No password is stored. GitHub issues a short-lived token that Snowflake verifies directly.
+No password is stored — GitHub issues a short-lived token that Snowflake verifies directly.
 
 **Verify:**
+
 ```sql
 SHOW USERS LIKE 'DEMO_GH_%_COCO_AGENT_USER';
 ```
@@ -92,31 +95,73 @@ CoCo sets CI secrets and the fix-mode ceiling:
 **Quick start path:** after secrets are set, CoCo re-enables Actions and applies
 branch protection (require 1 PR review). Done.
 
-**Full setup path:** also asks whether to install a local runner, then offers the smoke test.
+**Full setup path:** also offers the smoke test below.
 
 ---
 
 ## Step 5 — Watch the Loop (full setup only)
 
-CoCo copies a small Python app with three intentional bugs into `demo/`, enables Actions,
-and pushes. The scan workflow finds the bugs, raises issues, and the fix workflow opens PRs.
+CoCo copies a small Python app with three intentional bugs into `demo/`, enables
+Actions, and pushes. Each issue is scored and routed based on the `conservative`
+ceiling set in step 4.
 
-**After a minute, expected output:**
+### What the scan finds
 
-```text
-=== Issues ===
-[coco-agent] Bug: SQL injection risk in query_table()
-[coco-agent] Bug: hardcoded credentials in get_connection()
-[coco-agent] Bug: undefined reference in process_data()
+| Issue | Severity | Routing (conservative) |
+|-------|----------|----------------------|
+| Hardcoded schema: `SCHEMA = "PUBLIC"` | low | **auto-fix** |
+| Sensitive data in debug log | medium | **needs-review** |
+| SQL injection in `query_table()` | high | **needs-review** |
 
-=== PRs ===
-fix(coco-agent): SQL injection risk in query_table()       (open)
-fix(coco-agent): hardcoded credentials in get_connection() (open)
-fix(coco-agent): undefined reference in process_data()     (open)
+### Beat 1 — Ceiling source
+
+Check the scan job summary for the active ceiling:
+
+```bash
+gh run list --repo ksampath/nimble-proxy --workflow cortex-scan.yml --limit 1
 ```
 
-Three issues, three PRs — fully automated. Each PR is one minimal fix so they
-don't conflict with each other.
+Look for this line in the job summary:
+
+```
+::notice::Fix ceiling: conservative (source: .github/coco-config.yml)
+```
+
+### Beat 2 — Auto-fix PR (low severity)
+
+```bash
+gh issue list --repo ksampath/nimble-proxy --label "coco:auto-fix"
+gh pr list   --repo ksampath/nimble-proxy --state open
+```
+
+Expected: 1 issue labeled `coco:auto-fix`, 1 PR fixing `SCHEMA = "PUBLIC"`.
+
+### Beat 3 — Needs-review labels (medium + high severity)
+
+```bash
+gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review"
+```
+
+Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+
+### Beat 4 — Comment trigger (`@coco fix`)
+
+Trigger the fix on the medium-severity needs-review issue:
+
+```bash
+ISSUE_NUM=$(gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review" \
+  --json number,title \
+  --jq '[.[] | select(.title | test("log|debug"; "i"))] | .[0].number')
+gh issue comment "$ISSUE_NUM" --repo ksampath/nimble-proxy --body "@coco fix"
+```
+
+Watch `cortex-comment-fix.yml` trigger:
+
+```bash
+gh run list --repo ksampath/nimble-proxy --workflow cortex-comment-fix.yml --limit 3
+```
+
+Expected: fix workflow fires, PR raised for the logging issue within ~2 minutes.
 
 ---
 
@@ -124,12 +169,13 @@ don't conflict with each other.
 
 The skill offers three options:
 
-- **Yes, tear down everything** — deregisters runner, drops Snowflake objects, deletes repo
+- **Yes, tear down everything** — drops Snowflake objects, deletes repo
 - **Drop Snowflake only** — keeps the repo
 - **Keep everything**
 
 **Verify after full teardown:**
+
 ```bash
-gh api "repos/ksampath/nimble-proxy" 2>&1  # should return 404
-snow sql -q "SHOW USERS LIKE 'DEMO_GH_%_COCO_AGENT_USER';"  # should return 0 rows
+gh api "repos/ksampath/nimble-proxy" 2>&1          # should return 404
+snow sql -q "SHOW USERS LIKE 'DEMO_GH_%_COCO_AGENT_USER';"  # 0 rows
 ```

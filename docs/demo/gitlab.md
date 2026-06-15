@@ -6,15 +6,20 @@ outputs are shown so you can verify before moving on.
 ## Pre-flight checklist
 
 - [ ] `glab auth status` — correct account is active
-- [ ] `snow connection test` — succeeds
+- [ ] `snow connection test --connection local-oauth` — succeeds
 - [ ] CoCo plugin installed: `cortex plugin list | grep devops-coco-agents`
 - [ ] Snowflake account identifier ready (e.g. `xy12345.us-east-1`)
 
 ## Start the scaffold
 
+Type in the CoCo chat panel:
+
 ```text
-scaffold for gitlab
+/scaffold-for-gitlab
 ```
+
+The skill asks: **Quick start or Full setup?** Choose Quick start for a 10-minute run,
+Full setup to also run the smoke test and walk through the smart-fix verification.
 
 ---
 
@@ -58,6 +63,7 @@ CoCo provisions three Snowflake objects:
 | User | `DEMO_GL_NIMBLE_PROXY_COCO_AGENT_USER` (TYPE = SERVICE) |
 
 OIDC trust is bound to `project_path:ksampath/nimble-proxy:ref_type:branch:ref:main`.
+No password stored — GitLab issues a short-lived token that Snowflake verifies directly.
 
 ---
 
@@ -82,36 +88,95 @@ Then sets 6 CI/CD variables:
 | `GITLAB_TOKEN_coco` | yes |
 | `COCO_MAX_AUTO` | no (value: `conservative`) |
 
-**Quick start:** after variables are set, CoCo re-enables pipelines and applies
+**Quick start path:** after variables are set, CoCo re-enables pipelines and applies
 branch protection (push restricted to MRs). Done.
+
+**Full setup path:** also offers the smoke test below.
 
 ---
 
 ## Step 5 — Watch the Loop (full setup only)
 
-Same smoke test as GitHub — three intentional bugs, scan finds them, fix agent
-opens MRs automatically.
+CoCo copies a small Python app with three intentional bugs into `demo/`, enables
+pipelines, and pushes. Each issue is scored and routed based on the `conservative`
+ceiling set in step 4.
 
-```text
-=== Issues ===
-[coco-agent] Bug: SQL injection risk in query_table()
-...
+### What the scan finds
 
-=== MRs ===
-fix(coco-agent): SQL injection risk in query_table()  (open)
-...
+| Issue | Severity | Routing (conservative) |
+|-------|----------|----------------------|
+| Hardcoded schema: `SCHEMA = "PUBLIC"` | low | **auto-fix** |
+| Sensitive data in debug log | medium | **needs-review** |
+| SQL injection in `query_table()` | high | **needs-review** |
+
+### Beat 1 — Ceiling source
+
+Check the scan-code job log for the active ceiling:
+
+```bash
+glab pipeline list --project ksampath/nimble-proxy 2>&1 | head -3
 ```
+
+Look for this line in the job output:
+
+```
+Fix ceiling: conservative (source: .gitlab/coco-config.yml)
+```
+
+### Beat 2 — Auto-fix MR (low severity)
+
+```bash
+glab issue list --label "coco:auto-fix"
+glab mr list --state opened
+```
+
+Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `SCHEMA = "PUBLIC"`.
+
+### Beat 3 — Needs-review labels (medium + high severity)
+
+```bash
+glab issue list --label "coco:needs-review"
+```
+
+Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+
+### Beat 4 — Comment trigger (`@coco fix`)
+
+Trigger the fix on the medium-severity needs-review issue via a note:
+
+```bash
+ENCODED_PATH="ksampath%2Fnimble-proxy"
+ISSUE_IID=$(glab issue list --label "coco:needs-review" -P 1 \
+  | python3 -c "
+import sys
+for line in sys.stdin:
+    if 'log' in line.lower() or 'debug' in line.lower():
+        print(line.split()[0].lstrip('#'))
+        break
+")
+glab api "projects/$ENCODED_PATH/issues/$ISSUE_IID/notes" \
+  -X POST -F "body=@coco fix"
+```
+
+Watch the comment-fix pipeline job trigger:
+
+```bash
+glab pipeline list --project ksampath/nimble-proxy 2>&1 | head -5
+```
+
+Expected: fix job fires, MR raised for the logging issue within ~2 minutes.
 
 ---
 
 ## Step 6 — Clean Up (optional)
 
-- **Yes, tear down everything** — deregisters runner, drops Snowflake objects, deletes project
-- **Drop Snowflake only** — keeps project
+- **Yes, tear down everything** — drops Snowflake objects, deletes project
+- **Drop Snowflake only** — keeps the project
 - **Keep everything**
 
-**Verify:**
+**Verify after full teardown:**
+
 ```bash
-glab api "projects/ksampath%2Fnimble-proxy" 2>&1  # should 404
+glab api "projects/ksampath%2Fnimble-proxy" 2>&1          # should 404
 snow sql -q "SHOW USERS LIKE 'DEMO_GL_%_COCO_AGENT_USER';"  # 0 rows
 ```
