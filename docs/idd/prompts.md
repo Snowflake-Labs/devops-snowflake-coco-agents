@@ -1,15 +1,15 @@
 # Prompt Workflows
 
-The `/idd` skill commands help you write better prompts and measure their effectiveness.
+The `$devops-coco-agents:idd` skill commands help you write better prompts and measure their effectiveness.
 This page shows practical workflows for using them with your own project's CI/CD and
 agent tasks.
 
 ## Adding a new IDD prompt for your project
 
-Use `/idd-rewrite-prompt` to structure any existing prompt using the four IDD blocks:
+Use `$devops-coco-agents:idd-rewrite-prompt` to structure any existing prompt using the four IDD blocks:
 
 ```text
-/idd-rewrite-prompt
+$devops-coco-agents:idd-rewrite-prompt
 ```
 
 The skill guides you through:
@@ -54,10 +54,10 @@ The skill guides you through:
 ## Refining an existing prompt
 
 If your scan or fix prompt is producing noisy results (too many false positives,
-fixes that miss the point), use `/idd-evaluate-prompt` to score it:
+fixes that miss the point), use `$devops-coco-agents:idd-evaluate-prompt` to score it:
 
 ```text
-/idd-evaluate-prompt
+$devops-coco-agents:idd-evaluate-prompt
 ```
 
 The skill scores your prompt on five IDD dimensions:
@@ -75,7 +75,7 @@ The skill scores your prompt on five IDD dimensions:
 After your agent has run a full scaffold or scan→fix cycle:
 
 ```text
-/idd-measure-icr
+$devops-coco-agents:idd-measure-icr
 ```
 
 The skill counts the total operations performed and the human instructions that triggered
@@ -84,7 +84,7 @@ them. Use the output to track your team's agentic maturity over time.
 **Example result:**
 
 ```text
-Human instructions: 1  (/scaffold)
+Human instructions: 1  ($devops-coco-agents:scaffold)
 Agent operations:  48
 ICR: 48 — Level 4 (Intent engine)
 ```
@@ -97,7 +97,7 @@ ICR: 48 — Level 4 (Intent engine)
 - **Glass Box Output** — always define what the final stdout should say. Vague output
   makes it impossible to automate verification.
 
-- **Iterate with /idd-evaluate-prompt** — run the eval before committing a new prompt
+- **Iterate with `$devops-coco-agents:idd-evaluate-prompt`** — run the eval before committing a new prompt
   to your template. A score below 3/5 on any dimension predicts unreliable agent behaviour.
 
 - **Custom scan prompts per project** — copy `.cortex/prompts/scan.md` from the template

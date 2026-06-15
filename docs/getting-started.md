@@ -77,7 +77,12 @@ Required for URL encoding and JSON parsing inside scaffold steps.
 
 ## Choose your setup mode
 
-When you run `/scaffold-for-github` or `/scaffold-for-gitlab`, the skill asks upfront:
+When you describe what you want, CoCo routes automatically:
+
+```text
+scaffold for agentic devops with GitHub
+scaffold for agentic devops with GitLab
+```
 
 ```text
 Quick start — cloud runners
@@ -91,11 +96,20 @@ For a first run, **Quick start** is recommended. You can always run the smoke te
 
 ## Run the scaffold
 
+In the CoCo chat panel, describe what you want:
+
 ```text
-# In CoCo chat panel:
-/scaffold-for-github     # GitHub Actions
-/scaffold-for-gitlab     # GitLab CI
-/scaffold                # Choose platform interactively
+scaffold for agentic devops with GitHub
+scaffold for agentic devops with GitLab
+scaffold for agentic devops          # choose platform interactively
+```
+
+Or use the explicit plugin command:
+
+```text
+$devops-coco-agents:scaffold-for-github     # GitHub Actions
+$devops-coco-agents:scaffold-for-gitlab     # GitLab CI
+$devops-coco-agents:scaffold                # choose platform interactively
 ```
 
 See [GitHub scaffold](scaffold/github.md) or [GitLab scaffold](scaffold/gitlab.md) for the full 6-step walkthrough.

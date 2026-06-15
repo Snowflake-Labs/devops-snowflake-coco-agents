@@ -15,7 +15,7 @@ outputs are shown so you can verify before moving on.
 Type in the CoCo chat panel:
 
 ```text
-/scaffold-for-gitlab
+$devops-coco-agents:scaffold-for-gitlab
 ```
 
 The skill asks: **Quick start or Full setup?** Choose Quick start for a 10-minute run,

@@ -36,7 +36,7 @@ A team at ICR 48 gets fundamentally different leverage than a team at ICR 3.
 Use the IDD skill to measure your team's agentic maturity:
 
 ```text
-/idd-measure-icr
+$devops-coco-agents:idd-measure-icr
 ```
 
 ## The ICR adoption ladder

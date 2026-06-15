@@ -23,7 +23,7 @@ Scaffold a scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 mi
 
 -   **IDD-structured**
 
-    Intent Compression Ratio 48. One `/scaffold` instruction runs 48 distinct state-changing operations.
+    Intent Compression Ratio 48. One `$devops-coco-agents:scaffold` instruction runs 48 distinct state-changing operations.
     [IDD and ICR](idd/overview.md)
 
 </div>
@@ -47,11 +47,18 @@ Scaffold a scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 mi
 cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
 ```
 
-Then type in the CoCo chat panel:
+Then in the CoCo chat panel, describe what you want:
 
 ```text
-/scaffold-for-github   # GitHub Actions
-/scaffold-for-gitlab   # GitLab CI
+scaffold for agentic devops with GitHub
+scaffold for agentic devops with GitLab
+```
+
+Or use the shorthand:
+
+```text
+$devops-coco-agents:scaffold-for-github   # GitHub Actions
+$devops-coco-agents:scaffold-for-gitlab   # GitLab CI
 ```
 
 ## Prerequisites

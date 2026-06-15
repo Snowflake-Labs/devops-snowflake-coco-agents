@@ -21,11 +21,18 @@ for a human.
    cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
    ```
 
-3. In the CoCo chat panel:
+3. In the CoCo chat panel, just describe what you want:
 
    ```text
-   /scaffold-for-github   # GitHub Actions
-   /scaffold-for-gitlab   # GitLab CI
+   scaffold for agentic devops with GitHub
+   scaffold for agentic devops with GitLab
+   ```
+
+   Or use the explicit plugin command:
+
+   ```text
+   $devops-coco-agents:scaffold-for-github   # GitHub Actions
+   $devops-coco-agents:scaffold-for-gitlab   # GitLab CI
    ```
 
 Done in under 10 minutes.
