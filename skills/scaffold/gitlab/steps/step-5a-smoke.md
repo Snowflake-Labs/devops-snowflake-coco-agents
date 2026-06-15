@@ -70,4 +70,4 @@ ask_user_question:
 ```
 If "Check now": `glab issue list --label coco-agent` and `glab mr list --state opened`
 
-When done, load `gitlab/steps/step-5b-revert.md`.
+When done, load `gitlab/steps/step-5c-verify-smart-fix.md`.

@@ -65,4 +65,4 @@ ask_user_question:
 ```
 If "Check now": `gh issue list --repo "$REPO_PATH" --label coco-agent` and `gh pr list --repo "$REPO_PATH" --state open`
 
-When done, load `github/steps/step-5b-revert.md`.
+When done, load `github/steps/step-5c-verify-smart-fix.md`.
