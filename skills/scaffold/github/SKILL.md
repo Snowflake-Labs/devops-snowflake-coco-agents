@@ -42,6 +42,8 @@ Each step builds on the previous — jumping ahead leaves the repo in a broken s
 
 In plan mode previews, use `$VARIABLE` not the resolved value. In "What we did" summaries confirm set without showing the value.
 
+See `skills/scaffold/references/token-scopes.md` for required token scopes.
+
 ## Resume Detection
 
 First action on every invocation — before Prerequisites. Read `skills/scaffold/references/manifest.md` for SKILL_DIR resolution.
@@ -176,7 +178,7 @@ Collect all inputs before Create Project.
    ```
    ask_user_question:
      header: "New repo"
-     question: "Name for the new repo? (generated suggestion — edit freely)"
+     question: "Confirm the repo name, or type a new one:"
      type: text
      defaultValue: "<login>/<petname>"
    ```

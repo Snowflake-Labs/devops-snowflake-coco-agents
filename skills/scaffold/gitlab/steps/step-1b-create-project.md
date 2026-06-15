@@ -18,7 +18,6 @@ ask_user_question:
     - label: "Abort"
 ```
 If "Use the existing project": clone, run `manifest_ops.py summary`, detect completed steps, present resume options.
-
 ---
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Present:
@@ -32,7 +31,8 @@ Call `exit_plan_mode`. Then execute:
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest ".coco-agent/$PROJECT_NAME/manifest.toml" --step step_1
 _j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
-NAMESPACE_ID=$(glab api user | _j "['id']")
+NAMESPACE_ID=$(glab api "namespaces?search=$GITLAB_USER" \
+  | python3 -c "import sys,json; ns=[n for n in json.load(sys.stdin) if n['kind']=='user']; print(ns[0]['id'])")
 for _i in 1 2 3; do
   CREATE_OUT=$(glab api "projects" --method POST \
     -F "name=$PROJECT_NAME" -F "namespace_id=$NAMESPACE_ID" \

@@ -1,56 +1,57 @@
 # Step 4a: Set GitLab CI/CD Variables
 
 > Sub-step of Step 4. Load after gate check passes.
-> Uses `glab api POST/PUT` directly — avoids `glab variable set` auth override issues.
+> Uses `curl` directly — `glab api` returns 403 for the variables endpoint
+> when `builds_access_level=disabled`. See `references/token-scopes.md`.
 
-**Collect bot token** (`GITLAB_TOKEN_coco` — needed to set the CI/CD variable):
+**Collect bot token:**
 ```bash
-glab auth status 2>&1 | grep "Logged in"
+GITLAB_TOKEN_COCO=$(glab auth token)
 ```
-If authenticated, ask:
-```
-ask_user_question:
-  header: "Bot token"
-  question: "Use your glab auth token as the CI pipeline bot token, or provide a dedicated PAT?"
-  options:
-    - label: "Use glab auth token (convenient)"
-      description: "Extracts the token glab already has — no extra setup"
-    - label: "Use a dedicated long-lived PAT"
-      description: "Better for shared projects or CI that outlives your session"
-```
-If "Use glab auth token": `GITLAB_TOKEN_coco=$(glab auth token)`
-> ⚠️ Personal OAuth token — if you run `glab auth logout`, the pipeline loses access.
-
-If "Use dedicated PAT":
-Open `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository`
-then: `cortex secret store gitlab-token-coco --prompt`
-Use with `secret_env: {"GITLAB_TOKEN_coco": "gitlab-token-coco"}` when executing the `_v` block below.
+> Token is used only to set CI/CD variables and is stored masked.
+> For a long-lived dedicated PAT, create one with `api write_repository ai_features` scopes
+> at `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository,ai_features`
 
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 
 cd "$PROJECT_NAME"
-# _v KEY VALUE [masked=true]: create-or-update CI/CD variable
+GLAB_BASE="https://gitlab.com/api/v4/projects/$ENCODED_PATH"
+
+# _v KEY VALUE [masked]: create-or-update CI/CD variable via curl Bearer auth
 _v() { local K=$1 V=$2 M=${3:-false}
-  glab api "projects/$ENCODED_PATH/variables" --method POST -F "key=$K" -F "value=$V" -F "masked=$M" 2>/dev/null \
-  || glab api "projects/$ENCODED_PATH/variables/$K" --method PUT -F "value=$V" -F "masked=$M" 2>/dev/null
+  curl -sf -X POST "$GLAB_BASE/variables" \
+    -H "Authorization: Bearer $GITLAB_TOKEN_COCO" \
+    -F "key=$K" -F "value=$V" -F "masked=$M" -o /dev/null \
+  || curl -sf -X PUT "$GLAB_BASE/variables/$K" \
+    -H "Authorization: Bearer $GITLAB_TOKEN_COCO" \
+    -F "value=$V" -F "masked=$M" -o /dev/null
   echo "✓ $K"; }
 
-_v SNOWFLAKE_ACCOUNT  "$SNOWFLAKE_ACCOUNT" true
-_v SNOWFLAKE_USER     "$SF_USER"
+# Variables API returns 403 when builds are disabled — temporarily enable
+curl -sf -X PUT "https://gitlab.com/api/v4/projects/$ENCODED_PATH" \
+  -H "Authorization: Bearer $GITLAB_TOKEN_COCO" \
+  -F "builds_access_level=private" -o /dev/null
+
+_v SNOWFLAKE_ACCOUNT   "$SNOWFLAKE_ACCOUNT" true
+_v SNOWFLAKE_USER      "$SF_USER"
 _v SNOWFLAKE_WAREHOUSE "$SF_WH"
-_v SNOWFLAKE_ROLE     "$SF_ROLE"
-read -r _PAT < <(security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w); _v SNOWFLAKE_PAT "$_PAT" true
-# Fix ceiling — CI/CD variable (not masked; visible in job logs for auditability)
-_v COCO_MAX_AUTO "conservative" false
-# GITLAB_TOKEN_coco from glab auth token or cortex secret
-# If using glab auth token: GITLAB_TOKEN_coco set in shell from coordinator
-# If using cortex secret: execute with secret_env={"GITLAB_TOKEN_coco": "gitlab-token-coco"}
-_v GITLAB_TOKEN_coco "$GITLAB_TOKEN_coco" true
+_v SNOWFLAKE_ROLE      "$SF_ROLE"
+read -r _PAT < <(security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w)
+_v SNOWFLAKE_PAT       "$_PAT" true
+_v COCO_MAX_AUTO       "conservative"
+_v GITLAB_TOKEN_COCO   "$GITLAB_TOKEN_COCO" true
+_v GITLAB_HOST         "gitlab.com"
+
+# Restore disabled
+curl -sf -X PUT "https://gitlab.com/api/v4/projects/$ENCODED_PATH" \
+  -H "Authorization: Bearer $GITLAB_TOKEN_COCO" \
+  -F "builds_access_level=disabled" -o /dev/null
+echo "✓ Pipelines re-disabled"
 ```
 
-**Verify:** `glab api "projects/$ENCODED_PATH/variables" | python3 -c "import sys,json; [print(v['key']) for v in json.load(sys.stdin)]"` — confirm all 6 keys listed.
+**Verify:** `glab api "projects/$ENCODED_PATH/variables" | python3 -c "import sys,json; [print(v['key']) for v in json.load(sys.stdin)]"` — confirm 8 keys listed.
 
 ### What we did
-- 6 CI/CD variables set on `$PROJECT_PATH`
-- Pipelines can authenticate via OIDC (cloud) or PAT (local runner)
+- 8 CI/CD variables set on `$PROJECT_PATH`
+- Pipelines remain disabled — re-enabled in Step 5 just before smoke test

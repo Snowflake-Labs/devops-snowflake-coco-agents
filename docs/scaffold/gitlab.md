@@ -16,7 +16,7 @@ on GitLab CI in one guided conversation.
 The skill requires `glab auth login` before any step. This is a hard gate — the skill
 stops if `glab auth status` does not confirm an active session.
 
-For the CI pipeline bot token (`GITLAB_TOKEN_coco`), the skill offers two paths:
+For the CI pipeline bot token (`GITLAB_TOKEN_COCO`), the skill offers two paths:
 
 - **Use glab auth token** — convenient for development; pipeline loses access if you log out
 - **Use a dedicated PAT** — recommended for long-lived or shared projects (`api + write_repository` scopes)

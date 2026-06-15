@@ -37,11 +37,12 @@ Each step builds on the previous — jumping ahead leaves the project in a broke
 | Variable | Mask as |
 |----------|---------|
 | `SNOWFLAKE_ACCOUNT` | `<account>` |
-| `GITLAB_TOKEN_coco` | `****` |
+| `GITLAB_TOKEN_COCO` | `****` |
 | `RUNNER_TOKEN` | `****` |
 | `REMOVE_TOKEN` | `****` |
 
-`GITLAB_TOKEN_coco` is write-only after capture — never display after collection.
+`GITLAB_TOKEN_COCO` is write-only after capture — never display after collection.
+See `skills/scaffold/references/token-scopes.md` for required PAT scopes.
 
 ## Resume Detection
 
@@ -178,7 +179,7 @@ Collect all inputs before Create Project.
    ```
    ask_user_question:
      header: "New project"
-     question: "Full path for the new project? (generated suggestion — edit freely)"
+     question: "Confirm the project path, or type a new one:"
      type: text
      defaultValue: "<username>/<petname>"
    ```

@@ -47,7 +47,7 @@ Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high)
 
 ---
 
-## Beat 4 — Comment trigger (`/coco fix`)
+## Beat 4 — Comment trigger (`@coco-agent fix`)
 
 Trigger the fix on the MEDIUM severity needs-review issue via a note:
 
@@ -60,9 +60,9 @@ for line in sys.stdin:
         print(line.split()[0].lstrip('#'))
         break
 ")
-echo "Triggering /coco fix on issue #$ISSUE_IID"
+echo "Triggering @coco-agent fix on issue #$ISSUE_IID"
 glab api "projects/$ENCODED_PATH/issues/$ISSUE_IID/notes" \
-  -X POST -F "body=/coco fix"
+  -X POST -F "body=@coco-agent fix"
 ```
 
 Watch the comment-fix pipeline job trigger:

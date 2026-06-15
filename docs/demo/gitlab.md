@@ -85,7 +85,7 @@ Then sets 6 CI/CD variables:
 | `SNOWFLAKE_USER` | no |
 | `SNOWFLAKE_WAREHOUSE` | no |
 | `SNOWFLAKE_ROLE` | no |
-| `GITLAB_TOKEN_coco` | yes |
+| `GITLAB_TOKEN_COCO` | yes |
 | `COCO_MAX_AUTO` | no (value: `conservative`) |
 
 **Quick start path:** after variables are set, CoCo re-enables pipelines and applies
@@ -140,7 +140,7 @@ glab issue list --label "coco:needs-review"
 
 Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
 
-### Beat 4 — Comment trigger (`/coco fix`)
+### Beat 4 — Comment trigger (`@coco-agent fix`)
 
 Trigger the fix on the medium-severity needs-review issue via a note:
 
@@ -155,7 +155,7 @@ for line in sys.stdin:
         break
 ")
 glab api "projects/$ENCODED_PATH/issues/$ISSUE_IID/notes" \
-  -X POST -F "body=/coco fix"
+  -X POST -F "body=@coco-agent fix"
 ```
 
 Watch the comment-fix pipeline job trigger:

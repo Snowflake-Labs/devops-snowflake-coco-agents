@@ -16,7 +16,7 @@ All CI/CD secrets and variables set by the scaffold skill.
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `GITLAB_TOKEN_coco` | Secret (masked) | Bot token for creating MRs and issues |
+| `GITLAB_TOKEN_COCO` | Secret (masked) | Bot token for creating MRs and issues |
 
 ## Fix-mode variable (set in Step 4a — both platforms)
 

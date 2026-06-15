@@ -14,7 +14,7 @@ Comment on any issue (including `coco:needs-review` ones):
 or:
 
 ```text
-/coco-agent fix
+@coco-agent fix
 ```
 
 The `cortex-comment-fix.yml` workflow triggers, runs the same fix logic as the auto path,
@@ -25,10 +25,10 @@ and opens a PR on a new branch.
 Comment on any issue:
 
 ```text
-/coco-agent fix
+@coco-agent fix
 ```
 
-The GitLab Duo Agent Platform detects the `/coco-agent` mention and sends a pipeline
+The GitLab Duo Agent Platform detects the `@coco-agent` mention and sends a pipeline
 trigger with the issue context. The `coco-agent` job picks it up and opens an MR.
 
 ## What happens after the trigger
