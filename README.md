@@ -24,6 +24,77 @@ The scaffold skills walk through six guided steps with confirm checkpoints:
 
 ---
 
+## How CoCo decides to fix
+
+Most CI/CD bots auto-fix everything or nothing. CoCo makes a **per-issue decision**
+based on how risky the fix is, with a team-configurable policy as the safety ceiling.
+
+### Issue scoring
+
+Every scan scores each finding on three dimensions:
+
+| Dimension | What it measures |
+|-----------|-----------------|
+| **Severity** | How critical is the issue (critical / high / medium / low) |
+| **Complexity** | How many lines/files change, how deep the logic change goes |
+| **Confidence** | How certain the AI is about the correct fix |
+
+Combined → **Fix decision**: `auto-fix` or `needs-review`
+
+| Severity | Complexity | Confidence | Decision |
+|----------|------------|------------|----------|
+| Any | Low | High | `auto-fix` — clear, safe change |
+| Critical/High | Low | High | `auto-fix` — important AND simple |
+| Critical/High | High | Any | `needs-review` — too risky to auto-apply |
+| Any | Any | Low | `needs-review` — AI not confident enough |
+
+### Fix mode resolution
+
+The team sets a **global ceiling** via config-as-code. An environment variable
+override allows experiments without a commit:
+
+```text
+1. COCO_MAX_AUTO variable   ← runtime experiment (no PR needed)
+2. .github/coco-config.yml  ← team policy, auditable via git history
+3. Built-in default         ← "conservative"
+```
+
+```yaml
+# .github/coco-config.yml  (ships in template, change via PR)
+fix_mode:
+  max_auto: conservative  # aggressive | conservative | off
+```
+
+Every run logs `::notice::COCO_MAX_AUTO=conservative (source: .github/coco-config.yml)`
+in the Actions summary — full auditability of every fix decision.
+
+### Workflow
+
+```mermaid
+flowchart TD
+    scan[cortex-scan] --> score["Score each issue\nseverity × complexity × confidence"]
+    score --> decision{FIX_DECISION}
+    decision -->|auto-fix| ceiling{Check ceiling\nCOCO_MAX_AUTO}
+    decision -->|needs-review| issue["Label: coco:needs-review\nCreate issue — wait for human"]
+    ceiling -->|allows| pr[cortex-fix\nauto PR/MR]
+    ceiling -->|blocks| issue
+    issue --> comment["Developer comments\n@coco fix"]
+    comment --> pr
+```
+
+### `@coco fix` — always works
+
+Even issues labelled `needs-review` can be triggered manually by commenting
+`@coco fix` (GitHub) or `@coco-agent fix` (GitLab) on the issue. The fix runs
+with the same prompt as the auto path — no special config needed.
+
+> **Status:** The scoring, ceiling check, and `@coco fix` trigger are tracked in
+> [github-coco-agent#4](https://github.com/Snowflake-Labs/github-coco-agent/issues/4) /
+> [gitlab-coco-agent#4](https://gitlab.com/kameshsampath/gitlab-coco-agent/-/work_items/4)
+> and ship post-v0.1.0. The `coco-config.yml` ships in the template from v0.1.0.
+
+---
+
 ## Prerequisites
 
 Install all required tools and authenticate before running any scaffold command.
