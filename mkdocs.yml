@@ -1,0 +1,100 @@
+site_name: devops-coco-agents
+site_url: https://snowflake-labs.github.io/devops-snowflake-coco-agents/
+site_description: >
+    Snowflake-native AI agents for Agentic DevOps. Scaffold autonomous scan-issue-fix pipelines on GitHub Actions and
+    GitLab CI.
+extra_css:
+    - stylesheets/extra.css
+theme:
+    name: material
+    palette:
+        - scheme: default
+          primary: custom
+          accent: blue
+          toggle:
+              icon: material/brightness-7
+              name: Switch to dark mode
+        - scheme: slate
+          primary: custom
+          accent: blue
+          toggle:
+              icon: material/brightness-4
+              name: Switch to light mode
+    logo: assets/snowflake-logo-blue.svg
+    favicon: assets/favicon.ico
+    font: false
+    features:
+        - content.code.copy
+        - content.code.select
+        - content.code.annotate
+        - content.tabs.link
+        - content.tooltips
+        - navigation.tabs
+        - navigation.sections
+        - navigation.instant
+        - navigation.instant.progress
+        - navigation.tracking
+        - navigation.footer
+        - navigation.top
+        - toc.follow
+nav:
+    - Home: index.md
+    - Getting Started: getting-started.md
+    - Scaffold:
+          - Overview: scaffold/overview.md
+          - GitHub: scaffold/github.md
+          - GitLab: scaffold/gitlab.md
+          - Quick Start: scaffold/quick-start.md
+          - Brownfield: scaffold/brownfield.md
+    - Smart Fix:
+          - Overview: smart-fix/overview.md
+          - Scoring: smart-fix/scoring.md
+          - Config Reference: smart-fix/config.md
+          - Comment Trigger: smart-fix/comment-trigger.md
+    - IDD:
+          - Overview: idd/overview.md
+          - ICR: idd/icr.md
+    - Demo:
+          - GitHub: demo/github.md
+          - GitLab: demo/gitlab.md
+    - Reference:
+          - Commands: reference/commands.md
+          - Variables: reference/variables.md
+          - Manifest: reference/manifest.md
+    - Contributing: contributing.md
+markdown_extensions:
+    - toc:
+          baselevel: 1
+          permalink: "&para;"
+    - admonition
+    - attr_list
+    - md_in_html
+    - def_list
+    - footnotes
+    - pymdownx.highlight:
+          anchor_linenums: true
+          line_spans: __span
+          pygments_lang_class: true
+          use_pygments: true
+    - pymdownx.betterem
+    - pymdownx.caret
+    - pymdownx.mark
+    - pymdownx.tilde
+    - pymdownx.details
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences:
+          custom_fences:
+              - name: mermaid
+                class: mermaid
+                format: !!python/name:pymdownx.superfences.fence_code_format
+    - pymdownx.tabbed:
+          alternate_style: true
+    - tables
+    - pymdownx.tasklist:
+          custom_checkbox: true
+    - pymdownx.emoji:
+          emoji_index: !!python/name:material.extensions.emoji.twemoji
+          emoji_generator: !!python/name:material.extensions.emoji.to_svg
+plugins:
+    - search
