@@ -1,5 +1,14 @@
 # Getting Started
 
+## Before you begin
+
+This plugin runs inside **Cortex Code (CoCo)**, Snowflake's agentic IDE.
+Install CoCo before proceeding:
+
+- [Cortex Code — official docs](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code)
+
+Once CoCo is running and connected to Snowflake, continue below.
+
 ## Install the plugin
 
 ```bash
