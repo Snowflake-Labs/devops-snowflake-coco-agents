@@ -1,4 +1,4 @@
-site_name: devops-coco-agents
+site_name: CoCo DevOps
 site_url: https://snowflake-labs.github.io/devops-snowflake-coco-agents/
 site_description: >
     Snowflake-native AI agents for Agentic DevOps. Scaffold autonomous scan-issue-fix pipelines on GitHub Actions and

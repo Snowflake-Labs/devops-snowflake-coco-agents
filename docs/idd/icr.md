@@ -1,6 +1,6 @@
-# Intent Compression Ratio (ICR)
+# ICR
 
-ICR measures how much work one human instruction compresses into agent operations:
+Intent Compression Ratio measures how much work one human instruction compresses into agent operations:
 
 ```text
 ICR = Total operations the agent performs ÷ Human instructions required
@@ -17,7 +17,7 @@ ICR = Total operations the agent performs ÷ Human instructions required
 
 ## `/scaffold` ICR = 48
 
-One conversation instruction. 48 distinct state-changing operations:
+One instruction. 48 distinct state-changing operations:
 
 - Repo creation + Actions disable
 - Snowflake ROLE + WAREHOUSE + USER provisioned
@@ -27,9 +27,9 @@ One conversation instruction. 48 distinct state-changing operations:
 - Manifest written at every step
 - Optional: runner installed, PAT created, smoke test pushed, PRs raised, teardown
 
-This is the number to cite when asked *"how do we measure CoCo adoption?"*
+This is how CoCo adoption is measured operationally.
 
-A team at ICR 48 is getting fundamentally different leverage than a team at ICR 3.
+A team at ICR 48 gets fundamentally different leverage than a team at ICR 3.
 
 ## Measure your own ICR
 

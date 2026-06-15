@@ -1,6 +1,6 @@
 # Scaffold Overview
 
-The scaffold skill walks through six guided steps to provision a fully working Agentic DevOps pipeline. Both GitHub Actions and GitLab CI are supported with identical security posture.
+The scaffold skill walks through six steps to provision an Agentic DevOps pipeline on GitHub Actions or GitLab CI. Both platforms use the same security posture.
 
 ## Architecture
 
@@ -50,4 +50,4 @@ Example with `PREFIX=DEMO`, repo `nimble-broker` on GitHub:
 
 ## Resume detection
 
-Every run reads the manifest at `.coco-agent/manifest.toml`. If a manifest exists, the skill resumes from the first incomplete step — no need to restart after a crash or interruption.
+Every run reads the manifest at `.coco-agent/manifest.toml`. If a manifest exists, the skill resumes from the first incomplete step. No need to restart after a crash or interruption.

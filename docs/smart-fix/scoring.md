@@ -28,20 +28,14 @@ Every finding from a scan is scored on three dimensions before a fix decision is
 
 ## What appears in the issue
 
-Every issue body ends with a scoring footer:
+Every issue body ends with a scoring footer rendered in GitHub as:
 
-```text
----
-_Severity: HIGH | Complexity: LOW | Confidence: HIGH | Fix mode: auto_
-```
+> **Severity:** HIGH | **Complexity:** LOW | **Confidence:** HIGH | **Fix mode:** auto
 
 For `needs-review` issues:
 
-```text
----
-_Severity: HIGH | Complexity: HIGH | Confidence: MEDIUM | Fix mode: needs-review_
-_To trigger fix: comment `@coco fix` on this issue._
-```
+> **Severity:** HIGH | **Complexity:** HIGH | **Confidence:** MEDIUM | **Fix mode:** needs-review
+> To trigger fix: comment `@coco fix` on this issue.
 
 ## Labels applied
 

@@ -1,7 +1,6 @@
-# IDD Overview
+# IDD
 
-The scaffold skill is built on Intent-Driven Development (IDD) — a design
-philosophy where you state the desired outcome rather than the procedural steps.
+The scaffold skill is built on Intent-Driven Development (IDD), a design practice where prompts state the desired outcome rather than the procedural steps.
 
 ## The IDD prompt structure
 
@@ -21,7 +20,7 @@ The agent figures out the how — and proves it worked via the Output section.
 
 === "Step-by-step (fragile)"
 
-    ```
+    ```text
     1. Run gh repo create
     2. Disable Actions
     3. Clone the repo
@@ -29,11 +28,11 @@ The agent figures out the how — and proves it worked via the Output section.
     ...
     ```
 
-    Breaks on any environment difference. No way to verify outcome.
+    Breaks on any environment difference. No way to verify the outcome.
 
 === "IDD (intent-driven)"
 
-    ```
+    ```text
     [Goal]
     A new GitHub repo exists, Snowflake OIDC is configured,
     secrets are set, CI is ready to run on first push.
@@ -54,14 +53,13 @@ The agent figures out the how — and proves it worked via the Output section.
 
 ## Why it matters for agents
 
-A vague prompt produces vague results. IDD forces the author to articulate:
+A vague prompt produces vague results. IDD forces the prompt author to define:
 
 - The exact end state (Goal)
 - The non-negotiable rules (Constraints)
 - What proof of completion looks like (Output)
 
-This is why CoCo's scaffold has an ICR of 48: one instruction compresses 48 operations
-because the intent is precisely stated. See [ICR →](icr.md)
+This is why CoCo's scaffold has an ICR of 48: one instruction compresses 48 operations because the intent is precisely stated. See [ICR](icr.md).
 
 ## Blog series
 
