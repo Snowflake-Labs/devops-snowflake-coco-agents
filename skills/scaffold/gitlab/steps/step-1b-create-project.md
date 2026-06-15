@@ -23,8 +23,8 @@ If "Use the existing project": clone, run `manifest_ops.py summary`, detect comp
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Present:
 ```
-Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, from gitlab-coco-agent template)
-Clones:  ./$PROJECT_NAME
+Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, blank then populated from gitlab-coco-agent template)
+Clones:  ./$PROJECT_NAME  (clean single commit — no template history)
 ```
 
 Call `exit_plan_mode`. Then execute:
@@ -53,12 +53,16 @@ except: sys.exit(1)
     echo "✓ Project created: $PROJECT_PATH"; break
   fi
 done
-git clone https://gitlab.com/kameshsampath/gitlab-coco-agent "$PROJECT_NAME"
-git -C "$PROJECT_NAME" remote set-url origin "https://gitlab.com/$PROJECT_PATH.git"
-git -C "$PROJECT_NAME" push origin main
-# Disable pipelines immediately
-glab api "projects/$ENCODED_PATH" --method PUT -F "builds_access_level=disabled" 2>&1
 PROJECT_URL="https://gitlab.com/$PROJECT_PATH"
+LOCAL_DIR="$PROJECT_NAME"
+TEMPLATE_URL="https://gitlab.com/kameshsampath/gitlab-coco-agent"
+REMOTE_URL="https://gitlab.com/$PROJECT_PATH.git"
+```
+
+Load `shared/create-repo.md` — clone template, strip history, push clean commit.
+
+```bash
+glab api "projects/$ENCODED_PATH" --method PUT -F "builds_access_level=disabled" 2>&1
 python3 "$MANIFEST_OPS" move \
   --from ".coco-agent/$PROJECT_NAME" --to "$PROJECT_NAME/.coco-agent" \
   --repo-path "$PROJECT_PATH" --repo-url "$PROJECT_URL" --repo-name "$PROJECT_NAME"
@@ -71,6 +75,6 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
 ### What we did
-- Project created at `$PROJECT_URL` ($PROJECT_VISIBILITY) from template
+- Project created at `$PROJECT_URL` ($PROJECT_VISIBILITY) with a single clean commit
 - Pipelines disabled — re-enabled in Step 5 just before smoke test
 - Manifest initialized at `$PROJECT_NAME/.coco-agent/manifest.toml`

@@ -23,21 +23,26 @@ If "Use the existing repo": clone it, run `manifest_ops.py summary` if manifest 
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Present:
 ```
-Creates: $REPO_PATH  ($REPO_VISIBILITY, from github-coco-agent template)
-Clones:  ./$REPO_NAME
+Creates: $REPO_PATH  ($REPO_VISIBILITY, blank then populated from github-coco-agent template)
+Clones:  ./$REPO_NAME  (clean single commit — no template history)
 ```
-Also show: `gh repo view https://github.com/Snowflake-Labs/github-coco-agent`
 
 Call `exit_plan_mode`. Then execute:
 
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest ".coco-agent/$REPO_NAME/manifest.toml" --step step_1
-gh repo create "$REPO_PATH" \
-  --template https://github.com/Snowflake-Labs/github-coco-agent \
-  --$REPO_VISIBILITY --clone
-# Disable Actions immediately — prevents spurious workflow runs during setup
+gh repo create "$REPO_PATH" --$REPO_VISIBILITY
+REPO_URL="https://github.com/$REPO_PATH"
+LOCAL_DIR="$REPO_NAME"
+TEMPLATE_URL="https://github.com/Snowflake-Labs/github-coco-agent"
+REMOTE_URL="${REPO_URL}.git"
+```
+
+Load `shared/create-repo.md` — clone template, strip history, push clean commit.
+
+```bash
+# Disable Actions — prevents spurious workflow runs during setup
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": false}'
-REPO_URL=$(gh repo view "$REPO_PATH" --json url -q .url)
 python3 "$MANIFEST_OPS" move \
   --from ".coco-agent/$REPO_NAME" --to "$REPO_NAME/.coco-agent" \
   --repo-path "$REPO_PATH" --repo-url "$REPO_URL"
@@ -50,6 +55,6 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
 ### What we did
-- Repo created at `$REPO_URL` ($REPO_VISIBILITY) from template
+- Repo created at `$REPO_URL` ($REPO_VISIBILITY) with a single clean commit
 - Actions disabled — re-enabled in Step 5 just before smoke test
 - Manifest initialized at `$REPO_NAME/.coco-agent/manifest.toml`
