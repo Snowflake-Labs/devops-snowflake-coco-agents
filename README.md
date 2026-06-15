@@ -87,7 +87,7 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 | [Getting Started](https://snowflake-labs.github.io/devops-snowflake-coco-agents/getting-started/) | Install, prerequisites, first scaffold |
 | [Scaffold — GitHub](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/github/) | GitHub Actions 6-step guide |
 | [Scaffold — GitLab](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/gitlab/) | GitLab CI 6-step guide |
-| [Smart Fix](https://snowflake-labs.github.io/devops-snowflake-coco-agents/smart-fix/overview/) | Per-issue scoring, config ceiling, `@coco fix` trigger |
+| [Smart Fix](https://snowflake-labs.github.io/devops-snowflake-coco-agents/smart-fix/overview/) | Per-issue scoring, config ceiling, `/coco fix` trigger |
 | [IDD and ICR](https://snowflake-labs.github.io/devops-snowflake-coco-agents/idd/overview/) | Intent-Driven Development, ICR 48 |
 | [Demo walkthrough](https://snowflake-labs.github.io/devops-snowflake-coco-agents/demo/github/) | Step-by-step with expected outputs |
 

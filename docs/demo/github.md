@@ -144,7 +144,7 @@ gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review"
 
 Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
 
-### Beat 4 — Comment trigger (`@coco fix`)
+### Beat 4 — Comment trigger (`/coco fix`)
 
 Trigger the fix on the medium-severity needs-review issue:
 
@@ -152,7 +152,7 @@ Trigger the fix on the medium-severity needs-review issue:
 ISSUE_NUM=$(gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review" \
   --json number,title \
   --jq '[.[] | select(.title | test("log|debug"; "i"))] | .[0].number')
-gh issue comment "$ISSUE_NUM" --repo ksampath/nimble-proxy --body "@coco fix"
+gh issue comment "$ISSUE_NUM" --repo ksampath/nimble-proxy --body "/coco fix"
 ```
 
 Watch `cortex-comment-fix.yml` trigger:

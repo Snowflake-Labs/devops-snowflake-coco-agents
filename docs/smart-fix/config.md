@@ -11,7 +11,7 @@ fix_mode:
   max_auto: conservative  # aggressive | conservative | off
   # aggressive:   auto-fix when AI confidence is medium or high
   # conservative: auto-fix only when severity=low, complexity=low, confidence=high  (default)
-  # off:          never auto-fix — always require @coco fix comment
+  # off:          never auto-fix — always require /coco fix comment
 ```
 
 ## Runtime override: `vars.COCO_MAX_AUTO`

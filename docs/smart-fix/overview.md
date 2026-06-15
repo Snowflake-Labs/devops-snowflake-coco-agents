@@ -12,7 +12,7 @@ flowchart TD
     decision -->|needs-review| issue["Label: coco:needs-review\nCreate issue, wait for human"]
     ceiling -->|allows| pr[cortex-fix\nauto PR/MR]
     ceiling -->|blocks| issue
-    issue --> comment["Developer comments\n@coco fix"]
+    issue --> comment["Developer comments\n/coco fix"]
     comment --> pr
 ```
 

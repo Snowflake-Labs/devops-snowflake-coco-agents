@@ -28,6 +28,6 @@ These are not skill commands — they run inside CI pipelines:
 |---------|----------|--------|
 | Issue labeled `coco:auto-fix` | GitHub | Runs `cortex-fix.yml` automatically |
 | Issue opened with `[coco-agent]` title | GitHub | Runs `cortex-fix.yml` (legacy path) |
-| Comment `@coco fix` or `@coco-agent fix` | GitHub | Runs `cortex-comment-fix.yml` |
+| Comment `/coco fix` or `/coco-agent fix` | GitHub | Runs `cortex-comment-fix.yml` |
 | Pipeline trigger with `AI_FLOW_TITLE =~ /\[coco-agent\]/` | GitLab | Runs `coco-agent` job |
-| Comment `@coco-agent fix` | GitLab | Triggers via Duo Agent Platform |
+| Comment `/coco-agent fix` | GitLab | Triggers via Duo Agent Platform |

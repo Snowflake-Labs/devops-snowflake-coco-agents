@@ -35,7 +35,7 @@ Every issue body ends with a scoring footer rendered in GitHub as:
 For `needs-review` issues:
 
 > **Severity:** HIGH | **Complexity:** HIGH | **Confidence:** MEDIUM | **Fix mode:** needs-review
-> To trigger fix: comment `@coco fix` on this issue.
+> To trigger fix: comment `/coco fix` on this issue.
 
 ## Labels applied
 

@@ -56,7 +56,7 @@ Bug: SQL injection risk in query_table()               ← coco:needs-review
 ```
 
 After the scan, load `step-5c-verify-smart-fix.md` to walk through all three
-routing paths including the `@coco fix` comment trigger.
+routing paths including the `/coco fix` comment trigger.
 
 ## Interpreting results
 

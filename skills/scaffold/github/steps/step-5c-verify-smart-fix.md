@@ -42,7 +42,7 @@ Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high)
 
 ---
 
-## Beat 4 — Comment trigger (`@coco fix`)
+## Beat 4 — Comment trigger (`/coco fix`)
 
 Trigger the fix on the MEDIUM severity needs-review issue:
 
@@ -50,8 +50,8 @@ Trigger the fix on the MEDIUM severity needs-review issue:
 ISSUE_NUM=$(gh issue list --repo "$REPO_PATH" --label "coco:needs-review" \
   --json number,title \
   --jq '[.[] | select(.title | test("log|debug"; "i"))] | .[0].number')
-echo "Triggering @coco fix on issue #$ISSUE_NUM"
-gh issue comment "$ISSUE_NUM" --repo "$REPO_PATH" --body "@coco fix"
+echo "Triggering /coco fix on issue #$ISSUE_NUM"
+gh issue comment "$ISSUE_NUM" --repo "$REPO_PATH" --body "/coco fix"
 ```
 
 Watch `cortex-comment-fix.yml` trigger in Actions:
