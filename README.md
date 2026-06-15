@@ -1,371 +1,75 @@
-# Devops With Snowflake CoCo Agent
+# devops-coco-agents
 
-A [Snowflake Cortex Code (CoCo)](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code)
-and [Claude Code](https://claude.ai/code) plugin with two skill sets:
+> **Agentic DevOps on Snowflake** — scaffold an autonomous scan→issue→fix pipeline
+> on GitHub Actions or GitLab CI in one conversation.
 
-- **Scaffold** — guided setup of autonomous CI/CD agent projects on GitHub or GitLab
-- **IDD** — apply [Intent-Driven Development](https://blogs.kameshs.dev/intent-driven-development-the-shift-developers-cant-ignore-ef434f94d56c)
-  to your prompts and workflows
+[![Docs](https://img.shields.io/badge/docs-snowflake--labs.github.io-0074D9)](https://snowflake-labs.github.io/devops-snowflake-coco-agents/)
 
 ---
 
-## How it works
+## What it does
 
-The scaffold skills walk through six guided steps with confirm checkpoints:
+The scaffold skill provisions a complete Agentic DevOps pipeline end-to-end:
 
-```text
-1. Create Project   — repo/project from template
-2. Hold Before Go-Live — disable CI/CD until setup is complete
-3. Connect Snowflake   — provision OIDC user (setup.sql + verify)
-4. Configure           — set GitHub secrets or GitLab CI/CD variables
-5. Watch the Loop      — optional smoke test → scan → issues → PR/MR
-6. Clean Up            — teardown (optional)
-```
+- GitHub / GitLab repo from a hardened template (zero template history)
+- Snowflake SERVICE user with OIDC / Workload Identity Federation — no stored secrets
+- CI secrets and fix-mode policy configured and committed
+- Branch protection applied
 
----
-
-## How CoCo decides to fix
-
-Most CI/CD bots auto-fix everything or nothing. CoCo makes a **per-issue decision**
-based on how risky the fix is, with a team-configurable policy as the safety ceiling.
-
-### Issue scoring
-
-Every scan scores each finding on three dimensions:
-
-| Dimension | What it measures |
-|-----------|-----------------|
-| **Severity** | How critical is the issue (critical / high / medium / low) |
-| **Complexity** | How many lines/files change, how deep the logic change goes |
-| **Confidence** | How certain the AI is about the correct fix |
-
-Combined → **Fix decision**: `auto-fix` or `needs-review`
-
-| Severity | Complexity | Confidence | Decision |
-|----------|------------|------------|----------|
-| Any | Low | High | `auto-fix` — clear, safe change |
-| Critical/High | Low | High | `auto-fix` — important AND simple |
-| Critical/High | High | Any | `needs-review` — too risky to auto-apply |
-| Any | Any | Low | `needs-review` — AI not confident enough |
-
-### Fix mode resolution
-
-The team sets a **global ceiling** via config-as-code. An environment variable
-override allows experiments without a commit:
-
-```text
-1. COCO_MAX_AUTO variable   ← runtime experiment (no PR needed)
-2. .github/coco-config.yml  ← team policy, auditable via git history
-3. Built-in default         ← "conservative"
-```
-
-```yaml
-# .github/coco-config.yml  (ships in template, change via PR)
-fix_mode:
-  max_auto: conservative  # aggressive | conservative | off
-```
-
-Every run logs `::notice::COCO_MAX_AUTO=conservative (source: .github/coco-config.yml)`
-in the Actions summary — full auditability of every fix decision.
-
-### Workflow
-
-```mermaid
-flowchart TD
-    scan[cortex-scan] --> score["Score each issue\nseverity × complexity × confidence"]
-    score --> decision{FIX_DECISION}
-    decision -->|auto-fix| ceiling{Check ceiling\nCOCO_MAX_AUTO}
-    decision -->|needs-review| issue["Label: coco:needs-review\nCreate issue — wait for human"]
-    ceiling -->|allows| pr[cortex-fix\nauto PR/MR]
-    ceiling -->|blocks| issue
-    issue --> comment["Developer comments\n@coco fix"]
-    comment --> pr
-```
-
-### `@coco fix` — always works
-
-Even issues labelled `needs-review` can be triggered manually by commenting
-`@coco fix` (GitHub) or `@coco-agent fix` (GitLab) on the issue. The fix runs
-with the same prompt as the auto path — no special config needed.
-
-> **Status:** The scoring, ceiling check, and `@coco fix` trigger are tracked in
-> [github-coco-agent#4](https://github.com/Snowflake-Labs/github-coco-agent/issues/4) /
-> [gitlab-coco-agent#4](https://gitlab.com/kameshsampath/gitlab-coco-agent/-/work_items/4)
-> and ship post-v0.1.0. The `coco-config.yml` ships in the template from v0.1.0.
+The scan→issue→fix loop runs automatically on every push. CoCo scores each finding
+by severity, complexity, and confidence — and decides whether to auto-fix or
+escalate to a human. The team controls the ceiling via `.github/coco-config.yml`,
+reviewed in a PR, auditable in git history.
 
 ---
 
-## Prerequisites
-
-Install all required tools and authenticate before running any scaffold command.
-
-### gh — GitHub CLI
-
-```bash
-# macOS
-brew install gh
-
-# Linux (Debian/Ubuntu)
-sudo apt install gh
-
-# Authenticate
-gh auth login
-gh auth status    # verify
-```
-
-> Full install guide: [cli.github.com](https://cli.github.com)
-
-### glab — GitLab CLI
-
-```bash
-# macOS
-brew install glab
-
-# Linux (Debian/Ubuntu)
-sudo apt install glab
-
-# Authenticate
-glab auth login
-glab auth status  # verify
-```
-
-> Full install guide: [gitlab.com/gitlab-org/cli](https://gitlab.com/gitlab-org/cli)
-
-### snow — Snowflake CLI
-
-```bash
-pip install snowflake-cli
-```
-
-Configure a named connection with ACCOUNTADMIN in `~/.snowflake/connections.toml`:
-
-```toml
-[connections.default]
-account   = "<your-account>"   # e.g. xy12345.us-east-1
-user      = "<your-user>"
-authenticator = "externalbrowser"
-```
-
-```bash
-snow connection test           # verify
-```
-
-> Full install guide: [Snowflake CLI docs](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index)
-
-### python3
-
-Required for URL encoding, YAML patching, and JSON parsing inside the scaffold
-steps. Python 3.9+ works; 3.12 is recommended.
-
-> [!TIP]
-> The plugin ships with a pinned Python version via `uv`. If you have
-> [uv](https://docs.astral.sh/uv/) installed, run `uv sync` in the plugin
-> directory and Python is managed automatically — no separate install needed.
-
-### curl
-
-Used to download the self-hosted runner binary when you opt into local testing.
-Pre-installed on macOS and most Linux distributions.
-
-### git
-
-Required for commits inside scaffolded repos. Pre-installed on most systems.
-
-```bash
-git --version   # verify
-```
-
----
-
-## Installation
-
-### Cortex Code (CoCo)
+## Install
 
 ```bash
 cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
 ```
 
-### Claude Code
-
-```bash
-# Add as a marketplace (recommended — enables /plugin update)
-claude plugin marketplace add https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
-claude plugin install devops-coco-agents@devops-coco-agents
-
-# Or install directly without the marketplace
-claude plugin install --source github --repo Snowflake-Labs/devops-snowflake-coco-agents
-```
-
-### Local (for development)
-
-```bash
-git clone https://github.com/Snowflake-Labs/devops-snowflake-coco-agents.git
-cortex plugin install ./devops-snowflake-coco-agents    # CoCo
-claude plugin install ./devops-snowflake-coco-agents    # Claude Code
-
-# Validate before installing
-claude plugin validate ./devops-snowflake-coco-agents
-```
-
----
-
 ## Usage
 
-Type any of these in the **chat panel** inside CoCo or Claude Code.
+```text
+/scaffold-for-github   # GitHub Actions
+/scaffold-for-gitlab   # GitLab CI
+/scaffold              # choose interactively
+/idd                   # Intent-Driven Development tools
+```
 
-### Scaffold commands
+## Prerequisites
 
-| CoCo | Claude Code | What it does |
-|------|-------------|--------------|
-| `$devops-coco-agents:scaffold` | `/scaffold` | Choose platform interactively |
-| `$devops-coco-agents:scaffold-for-github` | `/scaffold-for-github` | Guided GitHub Actions setup |
-| `$devops-coco-agents:scaffold-for-gitlab` | `/scaffold-for-gitlab` | Guided GitLab CI setup |
-
-### IDD commands
-
-| CoCo | Claude Code | What it does |
-|------|-------------|--------------|
-| `$devops-coco-agents:idd` | `/idd` | Choose IDD tool interactively |
-| `$devops-coco-agents:idd-evaluate-prompt` | `/idd-evaluate-prompt` | Score a prompt on IDD dimensions |
-| `$devops-coco-agents:idd-rewrite-prompt` | `/idd-rewrite-prompt` | Guided IDD rewrite |
-| `$devops-coco-agents:idd-measure-icr` | `/idd-measure-icr` | Measure Intent Compression Ratio |
+- [`gh`](https://cli.github.com) or [`glab`](https://gitlab.com/gitlab-org/cli) — authenticated
+- [`snow`](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index) — connected to Snowflake
+- Python 3.11+
 
 ---
 
-## Quick Start
+## Documentation
 
-### Guided (recommended)
+Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://snowflake-labs.github.io/devops-snowflake-coco-agents/)**
 
-Type in the chat panel — the skill collects your repo name, Snowflake prefix,
-and account, then guides through each step:
-
-```text
-$devops-coco-agents:scaffold-for-github   # GitHub Actions
-$devops-coco-agents:scaffold-for-gitlab   # GitLab CI
-```
-
-### Non-interactive (`cortex exec`)
-
-For automated or scripted setups. The prompts below use [IDD structure](https://blogs.kameshs.dev/intent-driven-development-the-shift-developers-cant-ignore-ef434f94d56c).
-
-**GitHub:**
-
-```bash
-export REPO_PATH=myorg/my-project \
-       PREFIX=MYORG \
-       SNOWFLAKE_ACCOUNT=xy12345.us-east-1
-
-cortex exec -c <connection> --bypass --no-history \
-  --allowed "Bash(gh *)" --allowed "Bash(snow *)" --allowed "Read" \
-  - << 'EOF'
-[Goal]
-Set up a new GitHub repository from the github-coco-agent template and trigger
-the CoCo scan->issue->fix automation loop.
-
-[Requirements]
-- Create repo from https://github.com/Snowflake-Labs/github-coco-agent
-- Run snowflake/setup.sql with PREFIX and REPO_PATH from env
-- Set three GitHub secrets: SNOWFLAKE_ACCOUNT, SNOWFLAKE_ROLE, SNOWFLAKE_WAREHOUSE
-- Trigger cortex-scan.yml
-
-[Constraints]
-- Use environment variables as-is; do not prompt for them
-- Only modify the new repo, not the template
-
-[Output]
-- Repository URL and Actions URL
-- "Setup complete. Scan workflow triggered."
-EOF
-```
-
-**GitLab:**
-
-```bash
-export PROJECT_PATH=mygroup/my-project \
-       PREFIX=MYORG \
-       SNOWFLAKE_ACCOUNT=xy12345.us-east-1 \
-       GITLAB_TOKEN_coco=<token>
-
-cortex exec -c <connection> --bypass --no-history \
-  --allowed "Bash(glab *)" --allowed "Bash(snow *)" --allowed "Read" \
-  - << 'EOF'
-[Goal]
-Set up a new GitLab project from the gitlab-coco-agent template and trigger
-the CoCo scan->issue->fix automation loop.
-
-[Requirements]
-- Create project from https://gitlab.com/kameshsampath/gitlab-coco-agent
-- Run snowflake/setup.sql with --enable-templating STANDARD
-- Set four CI/CD variables: SNOWFLAKE_ACCOUNT (masked), SNOWFLAKE_USER,
-  SNOWFLAKE_WAREHOUSE, GITLAB_TOKEN_coco (masked)
-- Trigger the main branch pipeline
-
-[Constraints]
-- Use environment variables as-is; do not prompt for them
-
-[Output]
-- Project URL and pipelines URL
-- "Setup complete. Scan pipeline triggered."
-EOF
-```
-
----
-
-## IDD — Intent-Driven Development
-
-> "A vague developer with AI produces noise. A precise developer with AI produces systems."
-> — Kamesh Sampath
-
-The `idd` skills help you apply IDD to any prompt or CI/CD workflow.
-
-### IDD prompt structure
-
-```text
-[Goal]          — desired outcome / desired state
-[Requirements]  — intent statements (not steps)
-[Constraints]   — scope, safety rules, what not to do
-[Output]        — what success looks like (Glass Box reporting)
-```
-
-### Intent Compression Ratio
-
-```text
-ICR = Total Operations / Intent Expressions
-
-ICR 1–3   command relay        agent is just a wrapper
-ICR 4–8   automation wrapper   meaningful compression
-ICR 9+    architectural partner high agentic readiness
-```
-
-Target: **Glass Box Compression** — high ICR + full observability + safe retry.
-
-### Blog series
-
-1. [Infrastructure-as-Intent: The Field Velocity Blueprint](https://blogs.kameshs.dev/infrastructure-as-intent-the-field-velocity-blueprint-e6217ef30f14)
-2. [The Ghost in the Machine: Why AI Needs the Spirit of UML](https://blogs.kameshs.dev/the-ghost-in-the-machine-why-ai-needs-the-spirit-of-uml-0d8864e583e2)
-3. [Intent-Driven Development: The Shift Developers Can't Ignore](https://blogs.kameshs.dev/intent-driven-development-the-shift-developers-cant-ignore-ef434f94d56c)
-4. [Intent Compression Ratio: Measuring the Power of Intent](https://blogs.kameshs.dev/intent-compression-ratio-measuring-the-power-of-intent-ceb6faf2e2f9)
-5. [ICR and Token Economics](https://blogs.kameshs.dev/icr-and-token-economics-9a014a75b399)
+| Section | |
+|---------|-|
+| [Getting Started](https://snowflake-labs.github.io/devops-snowflake-coco-agents/getting-started/) | Install, prerequisites, first scaffold |
+| [Scaffold — GitHub](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/github/) | GitHub Actions 6-step guide |
+| [Scaffold — GitLab](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/gitlab/) | GitLab CI 6-step guide |
+| [Smart Fix Mode](https://snowflake-labs.github.io/devops-snowflake-coco-agents/smart-fix/overview/) | Per-issue scoring, config-as-code ceiling, `@coco fix` |
+| [IDD and ICR](https://snowflake-labs.github.io/devops-snowflake-coco-agents/idd/overview/) | Intent-Driven Development, ICR 48 |
+| [Demo walkthrough](https://snowflake-labs.github.io/devops-snowflake-coco-agents/demo/github/) | Step-by-step with expected outputs |
 
 ---
 
 ## Templates
 
-| Platform | Template | CI/CD auth |
-|----------|----------|------------|
-| GitHub Actions | [Snowflake-Labs/github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) | [snowflake-cli-action](https://github.com/snowflakedb/snowflake-cli-action) — OIDC |
-| GitLab CI | [kameshsampath/gitlab-coco-agent](https://gitlab.com/kameshsampath/gitlab-coco-agent) | [snowflake-cicd-component](https://gitlab.com/snowflake-dev/snowflake-cicd-component) — OIDC |
+| Platform | Template | Auth |
+|----------|----------|------|
+| GitHub Actions | [Snowflake-Labs/github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) | OIDC via [snowflake-cli-action](https://github.com/snowflakedb/snowflake-cli-action) |
+| GitLab CI | [kameshsampath/gitlab-coco-agent](https://gitlab.com/kameshsampath/gitlab-coco-agent) | OIDC via [snowflake-cicd-component](https://gitlab.com/snowflake-dev/snowflake-cicd-component) |
 
 ---
 
 ## License
 
-Plugin code and configuration: [Apache 2.0](LICENSE)
-
-Skill content (`skills/`): [Snowflake Skills License](skills/scaffold/LICENSE)
-
----
-
-Markdown style follows the [Markdown Guide](https://www.markdownguide.org/basic-syntax/)
-and is enforced by [markdownlint](https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md)
-via `.markdownlint.yml` + pre-commit hook.
+Plugin code: [Apache 2.0](LICENSE) · Skill content (`skills/`): [Snowflake Skills License](skills/scaffold/LICENSE)
