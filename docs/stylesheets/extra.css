@@ -12,10 +12,9 @@
     --md-primary-bg-color: #0d1117;
 }
 
-/* force logo to white in both modes — SVG uses fill="currentColor" which
-   inherits from the parent color property */
-.md-header .md-logo,
+/* force logo white on the primary-colored header bar in both modes
+   filter works for both <img src=".svg"> and inline <svg> */
+.md-header .md-logo img,
 .md-header .md-logo svg {
-    color: #ffffff;
-    fill: #ffffff;
+    filter: brightness(0) invert(1);
 }
