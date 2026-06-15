@@ -41,6 +41,8 @@ _v SNOWFLAKE_USER     "$SF_USER"
 _v SNOWFLAKE_WAREHOUSE "$SF_WH"
 _v SNOWFLAKE_ROLE     "$SF_ROLE"
 read -r _PAT < <(security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w); _v SNOWFLAKE_PAT "$_PAT" true
+# Fix ceiling — CI/CD variable (not masked; visible in job logs for auditability)
+_v COCO_MAX_AUTO "conservative" false
 # GITLAB_TOKEN_coco from glab auth token or cortex secret
 # If using glab auth token: GITLAB_TOKEN_coco set in shell from coordinator
 # If using cortex secret: execute with secret_env={"GITLAB_TOKEN_coco": "gitlab-token-coco"}

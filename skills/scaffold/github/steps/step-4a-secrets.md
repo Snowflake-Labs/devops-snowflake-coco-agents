@@ -11,6 +11,9 @@ gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "$SF_WH"
 gh secret set SNOWFLAKE_USER      --repo "$REPO_PATH" --body "$SF_USER"
 gh secret set SNOWFLAKE_PAT       --repo "$REPO_PATH" --body "$SNOWFLAKE_PAT"
 
+# Fix ceiling — repository variable (not a secret; visible in logs)
+gh variable set COCO_MAX_AUTO --repo "$REPO_PATH" --body "conservative"
+
 # Allow Actions to create PRs (required for cortex-fix.yml)
 gh api "repos/$REPO_PATH/actions/permissions/workflow" \
   -X PUT \
