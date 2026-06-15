@@ -67,7 +67,7 @@ Required for URL encoding and JSON parsing inside scaffold steps.
 
 When you run `/scaffold-for-github` or `/scaffold-for-gitlab`, the skill asks upfront:
 
-```
+```text
 Quick start — cloud runners
   Create project → Snowflake OIDC → set secrets → re-enable CI → done (~10 min)
 
@@ -79,7 +79,7 @@ For a first run, **Quick start** is recommended. You can always run the smoke te
 
 ## Run the scaffold
 
-```
+```text
 # In CoCo chat panel:
 /scaffold-for-github     # GitHub Actions
 /scaffold-for-gitlab     # GitLab CI

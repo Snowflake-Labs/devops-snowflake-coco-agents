@@ -20,7 +20,7 @@ theme:
           toggle:
               icon: material/brightness-4
               name: Switch to light mode
-    logo: assets/snowflake-logo-blue.svg
+    logo: assets/coco-icon.svg
     favicon: assets/favicon.ico
     font: false
     features:
@@ -54,6 +54,7 @@ nav:
     - IDD:
           - Overview: idd/overview.md
           - ICR: idd/icr.md
+          - Prompt Workflows: idd/prompts.md
     - Demo:
           - GitHub: demo/github.md
           - GitLab: demo/gitlab.md
@@ -61,11 +62,10 @@ nav:
           - Commands: reference/commands.md
           - Variables: reference/variables.md
           - Manifest: reference/manifest.md
-    - Contributing: contributing.md
 markdown_extensions:
     - toc:
           baselevel: 1
-          permalink: "&para;"
+          permalink: "#"
     - admonition
     - attr_list
     - md_in_html

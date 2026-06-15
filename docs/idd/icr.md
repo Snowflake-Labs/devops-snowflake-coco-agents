@@ -2,7 +2,7 @@
 
 ICR measures how much work one human instruction compresses into agent operations:
 
-```
+```text
 ICR = Total operations the agent performs ÷ Human instructions required
 ```
 
@@ -35,13 +35,13 @@ A team at ICR 48 is getting fundamentally different leverage than a team at ICR 
 
 Use the IDD skill to measure your team's agentic maturity:
 
-```
+```text
 /idd-measure-icr
 ```
 
 ## The ICR adoption ladder
 
-```
+```text
 Level 0 — No agent       →  Team does everything manually
 Level 1 — Command relay  →  ICR 1–3    Agent wraps a few commands
 Level 2 — Wrapper        →  ICR 4–8    Team saves hours per sprint

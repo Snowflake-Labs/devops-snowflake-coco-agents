@@ -70,6 +70,22 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 
 ---
 
+## Contributing
+
+Commits must follow the [conventional commit](https://www.conventionalcommits.org/) format.
+Use `[skip-release]` prefix to bypass the auto-tag workflow on maintenance commits.
+
+```bash
+task install       # install dev + docs deps via uv
+pre-commit install  # wire hooks
+task docs:serve    # preview docs at http://localhost:8000
+```
+
+Pre-commit hooks: `check-yaml`, `markdownlint`, skill guidelines, ruff lint/format.
+Step files under `skills/scaffold/*/steps/` must be ≤ 80 lines.
+
+---
+
 ## License
 
 Plugin code: [Apache 2.0](LICENSE) · Skill content (`skills/`): [Snowflake Skills License](skills/scaffold/LICENSE)

@@ -49,7 +49,7 @@ cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-ag
 
 Then type in the CoCo chat panel:
 
-```
+```text
 /scaffold-for-github   # GitHub Actions
 /scaffold-for-gitlab   # GitLab CI
 ```

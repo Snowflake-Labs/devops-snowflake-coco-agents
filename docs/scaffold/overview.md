@@ -38,7 +38,7 @@ flowchart TD
 
 All Snowflake objects use a deterministic naming pattern:
 
-```
+```text
 {PREFIX}_{GH|GL}_{REPO_NAME_NORM}_COCO_AGENT_{OBJECT}
 ```
 

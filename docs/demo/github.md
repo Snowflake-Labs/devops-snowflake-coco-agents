@@ -14,7 +14,7 @@ outputs are shown so you can verify before moving on.
 
 Type in the CoCo chat panel:
 
-```
+```text
 scaffold for github
 ```
 
@@ -37,7 +37,7 @@ Full setup to also run the smoke test and watch issues + PRs appear.
 
 **Expected plan output:**
 
-```
+```text
 Creates: ksampath/nimble-proxy  (private, from template)
 Clones:  ./nimble-proxy         (clean single commit — no template history)
 ```
@@ -103,7 +103,7 @@ and pushes. The scan workflow finds the bugs, raises issues, and the fix workflo
 
 **After a minute, expected output:**
 
-```
+```text
 === Issues ===
 [coco-agent] Bug: SQL injection risk in query_table()
 [coco-agent] Bug: hardcoded credentials in get_connection()

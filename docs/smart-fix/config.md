@@ -34,7 +34,7 @@ Remove the variable to revert to the config file value.
 
 ## Resolution order
 
-```
+```text
 1. vars.COCO_MAX_AUTO        ← runtime experiment
 2. .github/coco-config.yml   ← config-as-code default
 3. Built-in: "conservative"
@@ -44,7 +44,7 @@ Remove the variable to revert to the config file value.
 
 Every scan run logs the active ceiling and source to the Actions/pipeline summary:
 
-```
+```text
 ::notice::Fix ceiling: aggressive (source: vars.COCO_MAX_AUTO override)
 ::notice::Fix ceiling: conservative (source: .github/coco-config.yml)
 ```

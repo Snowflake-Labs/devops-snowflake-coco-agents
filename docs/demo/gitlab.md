@@ -12,7 +12,7 @@ outputs are shown so you can verify before moving on.
 
 ## Start the scaffold
 
-```
+```text
 scaffold for gitlab
 ```
 
@@ -32,7 +32,7 @@ scaffold for gitlab
 
 **Expected plan output:**
 
-```
+```text
 Creates: ksampath/nimble-proxy  (private, from template)
 Clones:  ./nimble-proxy         (clean single commit — no template history)
 ```
@@ -65,7 +65,7 @@ OIDC trust is bound to `project_path:ksampath/nimble-proxy:ref_type:branch:ref:m
 
 The skill collects the bot token (needed to create MRs and issues):
 
-```
+```text
 Use your glab auth token (convenient)
   OR
 Use a dedicated long-lived PAT (api + write_repository scopes)
@@ -92,7 +92,7 @@ branch protection (push restricted to MRs). Done.
 Same smoke test as GitHub — three intentional bugs, scan finds them, fix agent
 opens MRs automatically.
 
-```
+```text
 === Issues ===
 [coco-agent] Bug: SQL injection risk in query_table()
 ...

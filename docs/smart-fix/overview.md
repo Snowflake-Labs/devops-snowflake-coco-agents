@@ -23,7 +23,7 @@ flowchart TD
 The team controls the ceiling via config-as-code. An environment variable provides
 a runtime override without requiring a PR:
 
-```
+```text
 Priority (highest wins):
 1. vars.COCO_MAX_AUTO        ← runtime experiment (no PR needed)
 2. .github/coco-config.yml   ← team policy, auditable via git history
@@ -32,7 +32,7 @@ Priority (highest wins):
 
 Every run logs the active ceiling and its source to the Actions/pipeline summary:
 
-```
+```text
 ::notice::Fix ceiling: conservative (source: .github/coco-config.yml)
 ```
 
@@ -41,7 +41,7 @@ Every run logs the active ceiling and its source to the Actions/pipeline summary
 Every other AI coding tool auto-fixes everything or nothing.
 CoCo makes a per-issue judgment — and documents that judgment in the issue body:
 
-```
+```text
 ---
 _Severity: HIGH | Complexity: LOW | Confidence: HIGH | Fix mode: auto_
 ```

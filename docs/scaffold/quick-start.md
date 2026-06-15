@@ -21,7 +21,7 @@ Works for both new repos (greenfield) and existing repos (brownfield).
 
 When the scaffold skill starts, it asks:
 
-```
+```text
 How would you like to set up CoCo?
 
   Quick start — cloud runners

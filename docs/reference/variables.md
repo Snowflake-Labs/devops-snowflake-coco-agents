@@ -34,7 +34,7 @@ Values: `off` \| `conservative` \| `aggressive`
 
 ## Resolution for `COCO_MAX_AUTO`
 
-```
+```text
 1. vars.COCO_MAX_AUTO        ← GitHub Actions repo variable / GitLab CI variable
 2. .github/coco-config.yml   ← config-as-code default
 3. Built-in: "conservative"

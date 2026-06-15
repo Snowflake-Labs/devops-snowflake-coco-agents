@@ -7,13 +7,13 @@ This works regardless of the `COCO_MAX_AUTO` ceiling — the human decision over
 
 Comment on any issue (including `coco:needs-review` ones):
 
-```
+```text
 @coco fix
 ```
 
 or:
 
-```
+```text
 @coco-agent fix
 ```
 
@@ -24,7 +24,7 @@ and opens a PR on a new branch.
 
 Comment on any issue:
 
-```
+```text
 @coco-agent fix
 ```
 

@@ -7,7 +7,7 @@ philosophy where you state the desired outcome rather than the procedural steps.
 
 Every skill prompt uses four sections:
 
-```
+```text
 [Goal]         — the desired state / outcome
 [Requirements] — intent statements, not steps
 [Constraints]  — scope, safety rules, what not to do
