@@ -1,6 +1,6 @@
 # Scaffold — GitHub
 
-The GitHub scaffold skill provisions a fully working Agentic DevOps pipeline
+The GitHub scaffold skill sets up an Agentic DevOps pipeline with Snowflake CoCo
 on GitHub Actions in one guided conversation.
 
 ## What gets created

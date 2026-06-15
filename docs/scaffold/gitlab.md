@@ -1,6 +1,6 @@
 # Scaffold — GitLab
 
-The GitLab scaffold skill provisions a fully working Agentic DevOps pipeline
+The GitLab scaffold skill sets up an Agentic DevOps pipeline with Snowflake CoCo
 on GitLab CI in one guided conversation.
 
 ## What gets created

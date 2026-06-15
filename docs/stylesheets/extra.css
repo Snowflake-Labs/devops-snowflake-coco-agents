@@ -11,3 +11,11 @@
     --md-primary-fg-color: #29B5E8;
     --md-primary-bg-color: #0d1117;
 }
+
+/* force logo to white in both modes — SVG uses fill="currentColor" which
+   inherits from the parent color property */
+.md-header .md-logo,
+.md-header .md-logo svg {
+    color: #ffffff;
+    fill: #ffffff;
+}

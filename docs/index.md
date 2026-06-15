@@ -1,6 +1,8 @@
 # Agentic DevOps with Snowflake CoCo
 
-Scaffold an autonomous scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 minutes. No stored secrets. No manual provisioning. One conversation.
+**One conversation. Autonomous CI/CD that thinks before it acts.**
+
+Scaffold a scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 minutes. No stored secrets. No manual provisioning.
 
 <div class="grid cards" markdown>
 
