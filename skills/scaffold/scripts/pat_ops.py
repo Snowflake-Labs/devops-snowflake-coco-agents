@@ -87,13 +87,16 @@ def _manifest_ops(manifest: str, *extra_args: str) -> None:
 def cmd_create(args: argparse.Namespace) -> int:
     svc = _keychain_service(args.account, args.user)
     pat_name = args.user + PAT_SUFFIX
+    # Derive role name: strip trailing _USER (4 chars) and append _ROLE
+    role_name = args.user[:-4] + "ROLE" if args.user.endswith("_USER") else args.user
     rows = _snow_sql(
         f"ALTER USER {args.user} ADD PROGRAMMATIC ACCESS TOKEN {pat_name} "
-        f"EXPIRES_IN DAYS = {EXPIRY_DAYS} "
+        f"ROLE_RESTRICTION = '{role_name}' "
+        f"DAYS_TO_EXPIRY = {EXPIRY_DAYS} "
         f"COMMENT = 'Smoke test only — revoked at end of step-5';"
     )
     token = next(
-        (str(v) for row in rows for k, v in row.items() if k.upper() == "TOKEN"),
+        (str(v) for row in rows for k, v in row.items() if k.upper() in ("TOKEN_SECRET", "TOKEN")),
         None,
     )
     if not token:
@@ -109,7 +112,7 @@ def cmd_create(args: argparse.Namespace) -> int:
 def cmd_revoke(args: argparse.Namespace) -> int:
     svc = _keychain_service(args.account, args.user)
     pat_name = args.user + PAT_SUFFIX
-    _snow_sql(f"ALTER USER {args.user} DROP PROGRAMMATIC ACCESS TOKEN {pat_name};")
+    _snow_sql(f"ALTER USER {args.user} REMOVE PROGRAMMATIC ACCESS TOKEN {pat_name};")
     _keychain("delete", svc, args.user)
     if args.manifest:
         _manifest_ops(args.manifest, "fill-pat", "--pat-name", "")
