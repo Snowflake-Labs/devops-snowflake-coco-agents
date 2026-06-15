@@ -1,47 +1,72 @@
-# devops-coco-agents
+# Agentic DevOps with Snowflake CoCo
 
-> **Agentic DevOps on Snowflake** — scaffold an autonomous scan→issue→fix pipeline
-> on GitHub Actions or GitLab CI in one conversation.
+> Scaffold an autonomous scan-issue-fix pipeline on GitHub Actions or GitLab CI
+> in one CoCo conversation. No stored secrets. No manual provisioning.
 
 [![Docs](https://img.shields.io/badge/docs-snowflake--labs.github.io-0074D9)](https://snowflake-labs.github.io/devops-snowflake-coco-agents/)
 
 ---
 
-## What it does
+CoCo provisions a complete Agentic DevOps pipeline — repo, Snowflake OIDC trust,
+CI secrets, branch protection — without a single manual step. The agent then scans
+every push, opens issues, and decides per-finding whether to raise a fix PR or wait
+for a human.
 
-The scaffold skill provisions a complete Agentic DevOps pipeline end-to-end:
+## Quick start
 
-- GitHub / GitLab repo from a hardened template (zero template history)
-- Snowflake SERVICE user with OIDC / Workload Identity Federation — no stored secrets
-- CI secrets and fix-mode policy configured and committed
-- Branch protection applied
+1. Install [Cortex Code (CoCo)](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code)
+2. Install the plugin:
 
-The scan→issue→fix loop runs automatically on every push. CoCo scores each finding
-by severity, complexity, and confidence — and decides whether to auto-fix or
-escalate to a human. The team controls the ceiling via `.github/coco-config.yml`,
-reviewed in a PR, auditable in git history.
+   ```bash
+   cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
+   ```
+
+3. In the CoCo chat panel:
+
+   ```text
+   /scaffold-for-github   # GitHub Actions
+   /scaffold-for-gitlab   # GitLab CI
+   ```
+
+Done in under 10 minutes.
 
 ---
 
-## Install
+## Smart fix mode
 
-```bash
-cortex plugin install https://github.com/Snowflake-Labs/devops-snowflake-coco-agents
+Most tools treat every finding the same: auto-fix everything, or do nothing.
+CoCo scores each finding before acting and documents the decision in the issue body:
+
+> **Severity:** HIGH | **Complexity:** LOW | **Confidence:** HIGH | **Fix mode:** auto
+
+The team controls the fix ceiling via config-as-code:
+
+```yaml
+# .github/coco-config.yml
+coco_max_auto: conservative   # off | conservative | aggressive
 ```
 
-## Usage
+Change it in a PR — the git history is your audit trail. A `COCO_MAX_AUTO`
+CI/CD variable overrides the file at runtime for experiments without touching code.
 
-```text
-/scaffold-for-github   # GitHub Actions
-/scaffold-for-gitlab   # GitLab CI
-/scaffold              # choose interactively
-/idd                   # Intent-Driven Development tools
-```
+---
+
+## What CoCo provisions
+
+- GitHub / GitLab repo from a hardened template, clean single-commit history
+- Snowflake SERVICE user, role, and warehouse with OIDC / Workload Identity Federation
+- Zero long-lived secrets — no tokens stored in CI environment
+- CI secrets and fix-mode policy committed to the repo
+- Branch protection requiring at least one PR review before merge
+
+---
 
 ## Prerequisites
 
-- [`gh`](https://cli.github.com) or [`glab`](https://gitlab.com/gitlab-org/cli) — authenticated
-- [`snow`](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index) — connected to Snowflake
+- [Cortex Code](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code) — the agentic IDE this plugin runs inside
+- [`gh`](https://cli.github.com) authenticated (`gh auth login`) — GitHub path
+- [`glab`](https://gitlab.com/gitlab-org/cli) authenticated (`glab auth login`) — GitLab path
+- [`snow`](https://docs.snowflake.com/en/developer-guide/snowflake-cli/index) CLI connected to Snowflake
 - Python 3.11+
 
 ---
@@ -55,7 +80,7 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 | [Getting Started](https://snowflake-labs.github.io/devops-snowflake-coco-agents/getting-started/) | Install, prerequisites, first scaffold |
 | [Scaffold — GitHub](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/github/) | GitHub Actions 6-step guide |
 | [Scaffold — GitLab](https://snowflake-labs.github.io/devops-snowflake-coco-agents/scaffold/gitlab/) | GitLab CI 6-step guide |
-| [Smart Fix Mode](https://snowflake-labs.github.io/devops-snowflake-coco-agents/smart-fix/overview/) | Per-issue scoring, config-as-code ceiling, `@coco fix` |
+| [Smart Fix](https://snowflake-labs.github.io/devops-snowflake-coco-agents/smart-fix/overview/) | Per-issue scoring, config ceiling, `@coco fix` trigger |
 | [IDD and ICR](https://snowflake-labs.github.io/devops-snowflake-coco-agents/idd/overview/) | Intent-Driven Development, ICR 48 |
 | [Demo walkthrough](https://snowflake-labs.github.io/devops-snowflake-coco-agents/demo/github/) | Step-by-step with expected outputs |
 
@@ -72,17 +97,18 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 
 ## Contributing
 
-Commits must follow the [conventional commit](https://www.conventionalcommits.org/) format.
-Use `[skip-release]` prefix to bypass the auto-tag workflow on maintenance commits.
+Commits must follow [conventional commit](https://www.conventionalcommits.org/) format.
+Use `[skip-release]` in the commit message to bypass the auto-tag workflow on
+maintenance commits.
 
 ```bash
-task install       # install dev + docs deps via uv
+task install        # install dev + docs deps via uv
 pre-commit install  # wire hooks
-task docs:serve    # preview docs at http://localhost:8000
+task docs:serve     # preview docs at http://localhost:8000
 ```
 
-Pre-commit hooks: `check-yaml`, `markdownlint`, skill guidelines, ruff lint/format.
-Step files under `skills/scaffold/*/steps/` must be ≤ 80 lines.
+Pre-commit hooks enforce: `check-yaml`, `markdownlint`, skill guidelines, ruff lint/format.
+Step files under `skills/scaffold/*/steps/` must be 80 lines or fewer.
 
 ---
 

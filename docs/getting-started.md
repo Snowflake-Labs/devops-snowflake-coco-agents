@@ -58,14 +58,17 @@ pip install snowflake-cli
 Configure a connection in `~/.snowflake/connections.toml`:
 
 ```toml
-[connections.default]
-account        = "<your-account>"   # e.g. xy12345.us-east-1
-user           = "<your-user>"
-authenticator  = "externalbrowser"
+[connections.local-oauth]
+account                          = "<your-account>"   # e.g. xy12345.us-east-1
+user                             = "<your-user>"
+authenticator                    = "OAUTH_AUTHORIZATION_CODE"
+client_store_temporary_credential = true
+role                             = "<your-role>"
+database                         = "<your-database>"
 ```
 
 ```bash
-snow connection test  # verify
+snow connection test --connection local-oauth  # verify
 ```
 
 **Python 3.11+**
