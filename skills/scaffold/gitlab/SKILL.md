@@ -70,6 +70,16 @@ SKILL_MODE=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.r
 
 Skip re-asking any question already in the manifest. Route to first step where `status != "COMPLETE"`. `IN_PROGRESS` = crashed — re-run from start of that step.
 
+If `$MANIFEST` is empty — check for orphaned resources before starting fresh:
+```bash
+ORPHANED=$(snow sql -q "SHOW USERS LIKE '%_GL_%_COCO_AGENT_USER'" --format json 2>/dev/null | python3 -c "import sys,json; r=json.load(sys.stdin); print(len(r))" 2>/dev/null || echo 0)
+```
+If `$ORPHANED` > 0:
+> ⚠️ **No manifest found but existing CoCo Snowflake resources were detected.**
+> Starting fresh may leave orphaned objects. Options:
+> - Run Step 6 (Clean Up) first to drop them, then re-scaffold
+> - Continue anyway (orphaned objects remain until manually cleaned up)
+
 ## Prerequisites Check
 
 Run before collecting inputs.
@@ -177,47 +187,6 @@ Collect all inputs before Create Project.
 2. **Visibility** — always pass the flag explicitly (glab defaults to `--internal`):
    Private / Internal / Public (default: Private)
    Store as `$PROJECT_VISIBILITY`. Flag: Private→`--private`, Internal→`--internal`, Public→`--public`.
-
-3. **GitLab bot token** — check `glab auth` first (preferred path):
-
-   ```bash
-   glab auth status 2>&1 | grep "Logged in"
-   ```
-
-   If authenticated: offer to reuse the stored token as the CI bot token:
-   ```
-   ask_user_question:
-     header: "Bot token"
-     question: "Use your glab auth token as the CI pipeline bot token, or provide a dedicated PAT?"
-     options:
-       - label: "Use glab auth token (convenient)"
-         description: "Extracts the token glab already has — no extra setup"
-       - label: "Use a dedicated long-lived PAT"
-         description: "Better for shared projects or CI that outlives your session"
-   ```
-
-   **If "Use glab auth token":**
-   ```bash
-   GITLAB_TOKEN_coco=$(glab auth token)
-   ```
-   > ⚠️ This is your personal OAuth token. Fine for development — if you
-   > `glab auth logout`, the pipeline loses access. Use the PAT option for
-   > long-lived or shared projects.
-
-   **If "Use dedicated PAT":** ask type first:
-   ```
-   ask_user_question:
-     header: "Token type"
-     question: "Classic PAT or fine-grained token?"
-     options:
-       - label: "Classic PAT (api + write_repository scopes)"
-       - label: "Fine-grained token (Repository R/W, Issues R/W, MR R/W, CI/CD R/W)"
-   ```
-   Open `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository`
-   then store securely: `cortex secret store gitlab-token-coco --prompt`
-   Set `GITLAB_TOKEN_coco` from secret_env when needed: `secret_env: {"GITLAB_TOKEN_coco": "gitlab-token-coco"}`
-
-   If `glab auth status` shows NOT authenticated: run `glab auth login --hostname gitlab.com` first.
 
 Derive: `GROUP="${PROJECT_PATH%/*}"`, `PROJECT_NAME="${PROJECT_PATH##*/}"`, `ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_PATH', safe=''))")`
 

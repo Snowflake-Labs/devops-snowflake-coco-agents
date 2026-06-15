@@ -3,6 +3,13 @@
 # Skips gracefully when cortex is not on PATH (CI without CoCo, other contributors).
 set -euo pipefail
 
+# Skip if no skill files are staged — avoids slow LLM call on unrelated commits
+SKILL_CHANGES=$(git diff --cached --name-only 2>/dev/null | grep -c "skills/scaffold/.*\.md" || true)
+if [ "${SKILL_CHANGES}" -eq 0 ]; then
+  echo "No skill files staged — skipping LLM skill audit"
+  exit 0
+fi
+
 if ! cortex exec --help > /dev/null 2>&1; then
   echo "cortex not on PATH — skipping LLM skill audit"
   exit 0

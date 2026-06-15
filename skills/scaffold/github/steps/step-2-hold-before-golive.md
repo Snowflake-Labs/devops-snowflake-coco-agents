@@ -20,13 +20,14 @@ If either fails:
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
 **Why this matters** (Guided mode only):
-> Actions were disabled when the repo was created to prevent spurious
-> workflow failures during setup. This step confirms that state before
-> provisioning Snowflake resources.
+> CI/Actions are temporarily disabled during Snowflake setup to prevent
+> workflows from firing before secrets are configured. For new repos this
+> was done at creation; for existing repos it is done now.
 
 **What we'll do**
 ```
 Verifies: GitHub Actions disabled on $REPO_PATH (expected: enabled = false)
+Re-disables if still active (existing repos may have had Actions running)
 ```
 
 Call `exit_plan_mode`. Then execute directly:

@@ -3,6 +3,29 @@
 > Sub-step of Step 4. Load after gate check passes.
 > Uses `glab api POST/PUT` directly — avoids `glab variable set` auth override issues.
 
+**Collect bot token** (`GITLAB_TOKEN_coco` — needed to set the CI/CD variable):
+```bash
+glab auth status 2>&1 | grep "Logged in"
+```
+If authenticated, ask:
+```
+ask_user_question:
+  header: "Bot token"
+  question: "Use your glab auth token as the CI pipeline bot token, or provide a dedicated PAT?"
+  options:
+    - label: "Use glab auth token (convenient)"
+      description: "Extracts the token glab already has — no extra setup"
+    - label: "Use a dedicated long-lived PAT"
+      description: "Better for shared projects or CI that outlives your session"
+```
+If "Use glab auth token": `GITLAB_TOKEN_coco=$(glab auth token)`
+> ⚠️ Personal OAuth token — if you run `glab auth logout`, the pipeline loses access.
+
+If "Use dedicated PAT":
+Open `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository`
+then: `cortex secret store gitlab-token-coco --prompt`
+Use with `secret_env: {"GITLAB_TOKEN_coco": "gitlab-token-coco"}` when executing the `_v` block below.
+
 ```bash
 python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 
@@ -24,7 +47,7 @@ read -r _PAT < <(security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER"
 _v GITLAB_TOKEN_coco "$GITLAB_TOKEN_coco" true
 ```
 
-**Verify:** `glab variable list 2>&1 | grep -E "SNOWFLAKE|GITLAB_TOKEN"` — confirm all 6 variables listed.
+**Verify:** `glab api "projects/$ENCODED_PATH/variables" | python3 -c "import sys,json; [print(v['key']) for v in json.load(sys.stdin)]"` — confirm all 6 keys listed.
 
 ### What we did
 - 6 CI/CD variables set on `$PROJECT_PATH`

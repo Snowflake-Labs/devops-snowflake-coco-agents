@@ -70,6 +70,16 @@ SKILL_MODE=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.r
 
 Skip re-asking any question already in the manifest. Route to first step where `status != "COMPLETE"`. `IN_PROGRESS` = crashed mid-execution — re-run from start of that step.
 
+If `$MANIFEST` is empty — check for orphaned resources before starting fresh:
+```bash
+ORPHANED=$(snow sql -q "SHOW USERS LIKE '%_GH_%_COCO_AGENT_USER'" --format json 2>/dev/null | python3 -c "import sys,json; r=json.load(sys.stdin); print(len(r))" 2>/dev/null || echo 0)
+```
+If `$ORPHANED` > 0:
+> ⚠️ **No manifest found but existing CoCo Snowflake resources were detected.**
+> Starting fresh may leave orphaned objects. Options:
+> - Run Step 6 (Clean Up) first to drop them, then re-scaffold
+> - Continue anyway (orphaned objects remain until manually cleaned up)
+
 ## Prerequisites Check
 
 Run before collecting inputs. If either fails, stop and help before proceeding.

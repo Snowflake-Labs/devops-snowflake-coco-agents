@@ -21,13 +21,14 @@ If either fails:
 ⚠️ MANDATORY: call `enter_plan_mode`. Then present:
 
 **Why this matters** (Guided mode only):
-> Pipelines were disabled when the project was created to prevent spurious
-> job failures during setup. This step confirms that state before
-> provisioning Snowflake resources.
+> CI/CD pipelines are temporarily disabled during Snowflake setup to prevent
+> jobs from firing before secrets are configured. For new projects this
+> was done at creation; for existing projects it is done now.
 
 **What we'll do**
 ```
 Verifies: CI/CD pipelines disabled on $PROJECT_PATH (expected: builds_access_level = disabled)
+Re-disables if still active (existing projects may have had pipelines running)
 ```
 
 Call `exit_plan_mode`. Then execute directly:
