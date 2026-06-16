@@ -10,7 +10,7 @@ The templates at `skills/scaffold/templates/` contain a minimal Python app with
 
 | # | File | Issue | Severity | Complexity | Confidence | Conservative | Aggressive |
 |---|------|-------|----------|------------|------------|-------------|------------|
-| 1 | `app.py` | Hardcoded schema: `SCHEMA = "PUBLIC"` | low | low | high | **auto-fix** | auto-fix |
+| 1 | `app.py` | Hardcoded password: `DEFAULT_PASSWORD = "changeme123"` | low | low | high | **auto-fix** | auto-fix |
 | 2 | `app.py` | Sensitive data in debug log: `_LOG.debug("account=%s user=%s", ...)` | medium | low | high | needs-review | **auto-fix** |
 | 3 | `app.py` | SQL injection: `f"SELECT * FROM {table_name}"` | high | medium | medium | needs-review | needs-review |
 

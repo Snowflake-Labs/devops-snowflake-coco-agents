@@ -18,8 +18,9 @@ import snowflake.connector
 
 _LOG = logging.getLogger(__name__)
 
-# Issue 1: hardcoded schema — should come from an environment variable or config
-SCHEMA = "PUBLIC"
+# Issue 1: hardcoded fallback password — must never appear in production code
+# Severity: low | Complexity: low | Confidence: high
+DEFAULT_PASSWORD = "changeme123"
 
 
 def get_connection() -> snowflake.connector.SnowflakeConnection:
