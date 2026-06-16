@@ -4,11 +4,13 @@
 > Read manifest values from step-6 router before loading this sub-step.
 
 **Disable pipelines:**
+
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=disabled 2>&1
 ```
 
 **Stop and deregister runner** (if running):
+
 ```bash
 if [ "${RUNNER_PID:-0}" -gt 0 ]; then kill "$RUNNER_PID" 2>/dev/null || true; sleep 2; fi
 if [ -n "$RUNNER_ID" ] && [ "$RUNNER_ID" != "0" ]; then
@@ -17,6 +19,7 @@ fi
 ```
 
 **[Drop Snowflake only] Restore pipeline before disabling:**
+
 ```bash
 if [ "$TEARDOWN_MODE" = "snowflake-only" ]; then
   python3 - << 'PYEOF'
@@ -35,11 +38,9 @@ fi
 ```
 
 Load `shared/snowflake-drop-sql.md` and execute guard + DROP with values:
+
 - `$SF_USER`, `$SF_WH`, `$SF_ROLE` from manifest
 
 ```bash
-# Remove PAT from Keychain if present
-PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-PAT_NAME=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.pat_name 2>/dev/null || echo "")
-[ -n "$PAT_NAME" ] && python3 "$PAT_OPS" revoke --user "$SF_USER" --account "$SNOWFLAKE_ACCOUNT" --manifest "$MANIFEST" || true
+# No PAT to revoke — OIDC-only auth since Jun 16 cleanup
 ```

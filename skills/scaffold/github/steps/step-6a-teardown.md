@@ -4,11 +4,13 @@
 > Read manifest values from step-6 router before loading this sub-step.
 
 **Disable Actions:**
+
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": false}'
 ```
 
 **Stop and deregister runner** (if running):
+
 ```bash
 if [ "${RUNNER_PID:-0}" -gt 0 ]; then kill "$RUNNER_PID" 2>/dev/null || true; sleep 2; fi
 if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
@@ -18,6 +20,7 @@ fi
 ```
 
 **[Drop Snowflake only] Restore workflows before disabling:**
+
 ```bash
 if [ "$TEARDOWN_MODE" = "snowflake-only" ]; then
   sed -i '' 's/runs-on: \[self-hosted, local\]/runs-on: ubuntu-latest/g' \
@@ -30,11 +33,9 @@ fi
 ```
 
 Load `shared/snowflake-drop-sql.md` and execute guard + DROP with values:
+
 - `$SF_USER`, `$SF_WH`, `$SF_ROLE` from manifest
 
 ```bash
-# Remove PAT from Keychain if present
-PAT_OPS="$SKILL_DIR/scripts/pat_ops.py"
-PAT_NAME=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.pat_name 2>/dev/null || echo "")
-[ -n "$PAT_NAME" ] && python3 "$PAT_OPS" revoke --user "$SF_USER" --account "$SNOWFLAKE_ACCOUNT" --manifest "$MANIFEST" || true
+# No PAT to revoke — OIDC-only auth since Jun 16 cleanup
 ```
