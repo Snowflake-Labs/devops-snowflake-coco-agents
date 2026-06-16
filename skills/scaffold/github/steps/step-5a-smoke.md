@@ -1,68 +1,76 @@
-# Step 5a: Smoke Test (GitHub)
+# Step 5a: Smoke Test — Choose & Preview (GitHub)
 
-> Sub-step of Step 5. Enables Actions and pushes the smoke-test app.
+> Sub-step of Step 5. Enables Actions, asks demo type, builds and previews the generation prompt.
 
-**Enable Actions** (was disabled during setup — must happen before push):
+**Enable Actions:**
 
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": true}'
 ```
 
-**Verify:** `gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled` → expected `true`.
+**Verify:** `gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled` → `true`.
 
 ---
 
-⚠️ MANDATORY: call `enter_plan_mode`. Then present:
-
-**What we'll do**
-
-```
-Step 1: confirm Actions enabled (already done above)
-Step 2: write smoke-test app (3 files) to $REPO_NAME/demo/
-Step 3: commit + push  →  scan workflow triggers on GitHub-hosted runner
-Step 4: confirm workflow started — show Actions URL
-```
-
-Call `exit_plan_mode`. Then execute:
-
-```bash
-python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_5
-```
-
-Read `skills/scaffold/references/smoke-test.md` and write the files from
-`skills/scaffold/templates/smoke-test/` to `$REPO_NAME/demo/`.
-
-```bash
-cd "$REPO_NAME"
-git add demo/
-git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
-git push
-```
-
-**Confirm workflow triggered** (mandatory — do not continue until push confirmed):
-
-```bash
-echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
-gh run list --repo "$REPO_PATH" --limit 3
-```
-
-### What we did
-
-- Actions enabled on `$REPO_PATH`
-- Smoke-test app pushed to `demo/` — scan workflow triggered on the runner
-
-⚠️ MANDATORY pause (repeatable):
+## Ask
 
 ```
 ask_user_question:
-  header: "Watch the Loop"
-  question: "Check for issues and PRs on $REPO_PATH?"
+  header: "Demo type"
+  question: "Which app should CoCo generate? (1 auto-fix PR + 2 needs-review)"
   options:
-    - label: "Check now"
-    - label: "Not done yet — wait"
-    - label: "Done — continue to revert"
+    - label: "Data Engineering — Snowpark ETL pipeline"
+    - label: "Streamlit — sales analytics dashboard"
+    - label: "Custom — describe your own use case"
+    - label: "Skip smoke test"
 ```
 
-If "Check now": `gh issue list --repo "$REPO_PATH" --label coco-agent` and `gh pr list --repo "$REPO_PATH" --state open`
+If **Skip**: load `github/steps/step-5b-revert.md`.
 
-When done, load `github/steps/step-5c-verify-smart-fix.md`.
+If **Custom**: ask (text, `defaultValue: "data analytics pipeline"`) for the use case. Store as `$USE_CASE_DESC`.
+
+DE description: *"A Snowpark order-processing pipeline: loads raw records from stage, validates and transforms, then exports a clean report to an internal stage."*
+
+Streamlit description: *"A Streamlit sales analytics dashboard: connects to Snowflake, filters by region, renders results, and supports a custom table explorer."*
+
+---
+
+## Build + preview prompt
+
+Construct this prompt with `<TYPE>` and `<USE_CASE>` substituted:
+
+```
+[Goal]
+Write a realistic <TYPE> Python demo app into ./demo/.
+
+[Use case]
+<USE_CASE>
+
+[Requirements]
+- Write demo/app.py and demo/pyproject.toml ([tool.ruff] selecting = ["S"])
+- 3 issues in 3 separate functions (no issue-combining):
+    Issue 1 (LOW):    hardcoded secret/token/password at module level
+    Issue 2 (MEDIUM): config dict or sensitive object in logging.info()
+    Issue 3 (HIGH):   unsanitized identifier or path interpolated into SQL/DDL
+- No comments revealing the issues; realistic docstrings throughout
+
+[Output]
+Use your Write tool to create the files. No explanation needed.
+```
+
+⚠️ MANDATORY: `enter_plan_mode` → display the full prompt above → `exit_plan_mode`.
+
+```
+ask_user_question:
+  header: "Confirm"
+  question: "Run this prompt to generate the demo app?"
+  options:
+    - label: "Yes — generate and push"
+    - label: "Change use case"
+    - label: "Cancel"
+```
+
+If **Change use case**: loop back to Custom text input above.
+If **Cancel**: load `github/steps/step-5b-revert.md`.
+
+When confirmed, load `github/steps/step-5a-generate.md`.

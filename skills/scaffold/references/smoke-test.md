@@ -1,69 +1,67 @@
-# Demo Test Reference
+# Demo App Reference
 
-A shared reference for the optional smoke test beat in the scaffold skills.
-Load this when the user asks to test the workflow with a sample app.
+A reference for the smoke test beat in the scaffold skills.
+Load this when the user asks about what the demo app does or how to interpret results.
 
-## What the templates contain
+## How it works
 
-The templates at `skills/scaffold/templates/` contain a minimal Python app with
-**3 intentional issues**, one per smart-fix severity tier:
+Step 5a asks which type of demo app to generate, shows the generation prompt for
+confirmation, then runs `cortex exec` to write the code into `demo/`. CoCo
+generates fresh, realistic code each run — not a static template.
 
-| # | File | Issue | Severity | Complexity | Confidence | Conservative | Aggressive |
-|---|------|-------|----------|------------|------------|-------------|------------|
-| 1 | `app.py` | Hardcoded password: `DEFAULT_PASSWORD = "changeme123"` | low | low | high | **auto-fix** | auto-fix |
-| 2 | `app.py` | Sensitive data in debug log: `_LOG.debug("account=%s user=%s", ...)` | medium | low | high | needs-review | **auto-fix** |
-| 3 | `app.py` | SQL injection: `f"SELECT * FROM {table_name}"` | high | medium | medium | needs-review | needs-review |
+## Three demo types
 
-With the default `conservative` ceiling you will see **1 auto-fix PR + 2 needs-review issues**.
-Switching `COCO_MAX_AUTO` to `aggressive` changes that to **2 auto-fix + 1 needs-review**.
+| Type | What CoCo generates | Key technologies |
+|---|---|---|
+| Data Engineering | Snowpark ETL pipeline: load, transform, export to stage | `snowflake.snowpark`, `Session` |
+| Streamlit | Sales analytics dashboard: filters, results table, ad-hoc explorer | `streamlit`, `snowflake.connector` |
+| Custom | Realistic code for your described use case | depends on description |
 
-`pyproject.toml` enables ruff's `S` (bandit security) rules, which catch issues 2 and 3 reliably.
+## Issue routing (all types)
 
-## How to copy the templates
+Each generated app embeds exactly three issues, one per separate function:
 
-Read each file from `skills/scaffold/templates/smoke-test/` and write it to `demo/` in the user's repo:
+| # | Severity | Pattern | Routing: conservative ceiling |
+|---|---|---|---|
+| 1 | LOW | Hardcoded secret/token/password at module level | **auto-fix PR opened** |
+| 2 | MEDIUM | Config dict or sensitive object in `logging.info()` | `coco:needs-review` |
+| 3 | HIGH | Unsanitized identifier/path interpolated into SQL or DDL | `coco:needs-review` |
 
-```
-skills/scaffold/templates/smoke-test/app.py            → <repo>/demo/app.py
-skills/scaffold/templates/smoke-test/pyproject.toml    → <repo>/demo/pyproject.toml
-skills/scaffold/templates/smoke-test/tests/__init__.py → <repo>/demo/tests/__init__.py
-skills/scaffold/templates/smoke-test/tests/test_app.py → <repo>/demo/tests/test_app.py
-```
+With `COCO_MAX_AUTO=conservative` (default): **1 auto-fix PR + 2 needs-review issues**.
 
-Commit as a revertable test commit:
+With `COCO_MAX_AUTO=aggressive`: **2 auto-fix PRs + 1 needs-review issue**.
 
-```bash
-cd <repo>
-git add demo/
-git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
-git push
-```
+## After the push
 
-Once the loop has validated, clean up with a single revert:
-
-```bash
-git revert HEAD --no-edit && git push
-```
-
-## What happens when you push
-
-The scan workflow reads `demo/app.py` and creates one issue per finding:
+The scan workflow reads `demo/app.py` and creates one issue per finding.
+Expected output after ~3 minutes:
 
 ```
-[coco-agent] Bug: hardcoded schema in app.py           ← auto-fix PR raised
-Bug: sensitive data in debug log in get_connection()   ← coco:needs-review
-Bug: SQL injection risk in query_table()               ← coco:needs-review
+[coco-agent] Bug: hardcoded <secret>    ← auto-fix PR raised automatically
+Bug: sensitive data in <function>()     ← coco:needs-review
+Bug: SQL injection in <function>()      ← coco:needs-review
 ```
 
-After the scan, load `step-5c-verify-smart-fix.md` to walk through all three
-routing paths including the `/coco fix` comment trigger.
+Load `step-5c-verify-smart-fix.md` after the scan completes to walk through
+all three routing paths including the `/coco fix` comment trigger.
 
 ## Interpreting results
 
 | What you see | What it means |
 |---|---|
-| 1 PR opened, 2 needs-review issues | Scan + smart-fix routing working correctly (conservative) |
-| Issues with `coco:auto-fix` label | Auto-fix path working |
-| Issues with `coco:needs-review` label | Needs-review path working |
-| No issues after 5 min | Scan may still be running — check workflow/pipeline logs |
-| Auth failure in logs | OIDC setup incomplete — re-run step 3 |
+| 1 PR opened, 2 needs-review issues | Scan + smart-fix routing working correctly |
+| Issues labelled `coco:auto-fix` | Auto-fix path working |
+| Issues labelled `coco:needs-review` | Needs-review path working |
+| No issues after 5 min | Check workflow/pipeline logs — scan may still be running |
+| Auth failure in logs | OIDC setup incomplete — re-run Step 3 |
+
+## Clean up
+
+The smoke test commit is designed to be reverted cleanly:
+
+```bash
+git revert HEAD --no-edit && git push
+```
+
+This triggers one more CI run to confirm the pipeline handles a clean repo
+(no issues found → scan exits cleanly). Step 5b walks through this.

@@ -1,72 +1,80 @@
-# Step 5a: Smoke Test (GitLab)
+# Step 5a: Smoke Test — Choose & Preview (GitLab)
 
-> Sub-step of Step 5. Enables pipelines and pushes the smoke-test app.
+> Sub-step of Step 5. Enables pipelines, asks demo type, builds and previews the generation prompt.
 
 ```bash
 _j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
 ```
 
-**Enable pipelines** (was disabled during setup — must happen before push):
+**Enable pipelines:**
 
 ```bash
 glab api "projects/$ENCODED_PATH" -X PUT -F builds_access_level=enabled 2>&1
 ```
 
-**Verify:** `glab api "projects/$ENCODED_PATH" | _j "['builds_access_level']"` → expected `enabled`.
+**Verify:** `glab api "projects/$ENCODED_PATH" | _j "['builds_access_level']"` → `enabled`.
 
 ---
 
-⚠️ MANDATORY: call `enter_plan_mode`. Then present:
-
-**What we'll do**
-
-```
-Step 1: confirm pipelines enabled (already done above)
-Step 2: write smoke-test app (3 files) to $PROJECT_NAME/demo/
-Step 3: commit + push  →  scan-code job triggers on GitLab shared runner
-Step 4: confirm pipeline started — show pipelines URL
-```
-
-Call `exit_plan_mode`. Then execute:
-
-```bash
-python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_5
-```
-
-Read `skills/scaffold/references/smoke-test.md` and write the files from
-`skills/scaffold/templates/smoke-test/` to `$PROJECT_NAME/demo/`.
-
-```bash
-cd "$PROJECT_NAME"
-git add demo/
-git commit -m "test(smoke): add intentional-issue app for CI/CD loop validation"
-git push
-```
-
-**Confirm pipeline triggered** (mandatory — do not continue until push confirmed):
-
-```bash
-echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
-glab pipeline list --project "$PROJECT_PATH" 2>&1 | head -5
-```
-
-### What we did
-
-- Pipelines enabled on `$PROJECT_PATH`
-- Smoke-test app pushed to `demo/` — scan-code job triggered on the runner
-
-⚠️ MANDATORY pause (repeatable):
+## Ask
 
 ```
 ask_user_question:
-  header: "Watch the Loop"
-  question: "Check for issues and MRs on $PROJECT_PATH?"
+  header: "Demo type"
+  question: "Which app should CoCo generate? (1 auto-fix MR + 2 needs-review)"
   options:
-    - label: "Check now"
-    - label: "Not done yet — wait"
-    - label: "Done — continue to revert"
+    - label: "Data Engineering — Snowpark ETL pipeline"
+    - label: "Streamlit — sales analytics dashboard"
+    - label: "Custom — describe your own use case"
+    - label: "Skip smoke test"
 ```
 
-If "Check now": `glab issue list --label coco-agent` and `glab mr list --state opened`
+If **Skip**: load `gitlab/steps/step-5b-revert.md`.
 
-When done, load `gitlab/steps/step-5c-verify-smart-fix.md`.
+If **Custom**: ask (text, `defaultValue: "data analytics pipeline"`) for the use case. Store as `$USE_CASE_DESC`.
+
+DE description: *"A Snowpark order-processing pipeline: loads raw records from stage, validates and transforms, then exports a clean report to an internal stage."*
+
+Streamlit description: *"A Streamlit sales analytics dashboard: connects to Snowflake, filters by region, renders results, and supports a custom table explorer."*
+
+---
+
+## Build + preview prompt
+
+Construct this prompt with `<TYPE>` and `<USE_CASE>` substituted:
+
+```
+[Goal]
+Write a realistic <TYPE> Python demo app into ./demo/.
+
+[Use case]
+<USE_CASE>
+
+[Requirements]
+- Write demo/app.py and demo/pyproject.toml ([tool.ruff] selecting = ["S"])
+- 3 issues in 3 separate functions (no issue-combining):
+    Issue 1 (LOW):    hardcoded secret/token/password at module level
+    Issue 2 (MEDIUM): config dict or sensitive object in logging.info()
+    Issue 3 (HIGH):   unsanitized identifier or path interpolated into SQL/DDL
+- No comments revealing the issues; realistic docstrings throughout
+
+[Output]
+Use your Write tool to create the files. No explanation needed.
+```
+
+⚠️ MANDATORY: `enter_plan_mode` → display the full prompt above → `exit_plan_mode`.
+
+```
+ask_user_question:
+  header: "Confirm"
+  question: "Run this prompt to generate the demo app?"
+  options:
+    - label: "Yes — generate and push"
+    - label: "Change use case"
+    - label: "Cancel"
+```
+
+If **Change use case**: loop back to Custom text input above.
+If **Cancel**: load `gitlab/steps/step-5b-revert.md`.
+
+When confirmed, load `gitlab/steps/step-5a-generate.md`.
