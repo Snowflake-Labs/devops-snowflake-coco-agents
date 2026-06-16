@@ -13,9 +13,7 @@ Works for both new repos (greenfield) and existing repos (brownfield).
 
 ## What's skipped
 
-- Local runner setup (step 4b)
 - Smoke test (step 5)
-- PAT creation
 
 ## How to choose
 

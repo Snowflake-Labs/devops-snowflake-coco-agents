@@ -32,9 +32,6 @@ warehouse = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_WH"
 [runner]
 pid       = 12345
 runner_id = ""
-
-[snowflake.pat]
-pat_name = ""   # populated if local runner was set up
 ```
 
 ## Step states

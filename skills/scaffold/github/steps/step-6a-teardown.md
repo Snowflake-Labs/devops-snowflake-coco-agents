@@ -19,19 +19,6 @@ if [ -f "$REPO_NAME/.github/runner/config.sh" ]; then
 fi
 ```
 
-**[Drop Snowflake only] Restore workflows before disabling:**
-
-```bash
-if [ "$TEARDOWN_MODE" = "snowflake-only" ]; then
-  sed -i '' 's/runs-on: \[self-hosted, local\]/runs-on: ubuntu-latest/g' \
-    "$REPO_NAME/.github/workflows/cortex-scan.yml" \
-    "$REPO_NAME/.github/workflows/cortex-fix.yml"
-  git -C "$REPO_NAME" add .github/workflows/
-  git -C "$REPO_NAME" commit -m "ci(workflows): restore ubuntu-latest runner [skip ci]"
-  git -C "$REPO_NAME" push
-fi
-```
-
 Load `shared/snowflake-drop-sql.md` and execute guard + DROP with values:
 
 - `$SF_USER`, `$SF_WH`, `$SF_ROLE` from manifest

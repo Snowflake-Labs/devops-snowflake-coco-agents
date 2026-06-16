@@ -52,7 +52,7 @@ Sets 6 CI/CD variables. The bot token is collected here (deferred from upfront q
 
 **Quick start:** after variables are set, re-enables pipelines and applies branch protection. Done.
 
-**Full setup:** also asks whether to install a local runner.
+**Full setup:** asks whether to run the smoke test (Step 5).
 
 ### Step 5 — Watch the Loop (full setup)
 

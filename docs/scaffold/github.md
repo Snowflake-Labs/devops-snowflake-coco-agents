@@ -7,7 +7,7 @@ on GitHub Actions in one guided conversation.
 
 - A GitHub repo from the [github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) template
 - Three Snowflake objects (role, warehouse, SERVICE user) with OIDC trust
-- Five GitHub secrets + `COCO_MAX_AUTO` repository variable
+- Four GitHub secrets + `COCO_MAX_AUTO` repository variable
 - Branch protection (require 1 PR review)
 - `.github/coco-config.yml` with `conservative` fix ceiling
 
@@ -41,7 +41,7 @@ ALTER USER $SF_USER SET WORKLOAD_IDENTITY = (
 
 **Quick start:** sets secrets + `COCO_MAX_AUTO`, re-enables Actions, applies branch protection. Done.
 
-**Full setup:** also asks whether to install a local runner. If yes, installs to `.github/runner/` and asks whether to run the smoke test.
+**Full setup:** asks whether to run the smoke test (Step 5).
 
 ### Step 5 — Watch the Loop (full setup)
 
@@ -50,10 +50,8 @@ fix PRs are opened. See [Demo walkthrough →](../demo/github.md)
 
 ### Step 6 — Clean Up
 
-Tears down everything in dependency order: disable Actions → deregister runner →
-drop Snowflake objects → delete repo → remove local clone.
+Tears down everything in dependency order: disable Actions — drop Snowflake objects — delete repo — remove local clone.
 
 ## Authentication
 
-The CI pipeline uses Workload Identity Federation — no `SNOWFLAKE_PAT` is needed on
-GitHub-hosted runners. The `snowflake-cli-action@v2` handles OIDC token exchange automatically.
+The CI pipeline uses Workload Identity Federation. The `snowflake-cli-action@v2` handles OIDC token exchange automatically.

@@ -10,7 +10,6 @@ All CI/CD secrets and variables set by the scaffold skill.
 | `SNOWFLAKE_ROLE` | Secret | Service user role, e.g. `DEMO_GH_REPO_COCO_AGENT_ROLE` |
 | `SNOWFLAKE_WAREHOUSE` | Secret | Service warehouse, e.g. `DEMO_GH_REPO_COCO_AGENT_WH` |
 | `SNOWFLAKE_USER` | Secret | Service user, e.g. `DEMO_GH_REPO_COCO_AGENT_USER` |
-| `SNOWFLAKE_PAT` | Secret (masked) | PAT for local runner only — removed after smoke test |
 
 ## GitLab-specific
 
