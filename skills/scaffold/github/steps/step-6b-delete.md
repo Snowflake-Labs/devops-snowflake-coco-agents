@@ -11,7 +11,8 @@ echo "✓ $REPO_NAME removed — environment is clean"
 ```
 
 ### What we did
-- CI disabled, runner stopped and deregistered
+
+- CI disabled
 - Snowflake objects dropped: `$SF_USER / $SF_WH / $SF_ROLE`
 - Repo deleted and local clone removed
 

@@ -11,7 +11,8 @@ echo "✓ $PROJECT_NAME removed — environment is clean"
 ```
 
 ### What we did
-- Pipelines disabled, runner stopped and deregistered
+
+- CI disabled
 - Snowflake objects dropped: `$SF_USER / $SF_WH / $SF_ROLE`
 - Project deleted and local clone removed
 

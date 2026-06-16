@@ -1,10 +1,7 @@
 # Step 5a: Smoke Test — Choose & Preview (GitLab)
 
 > Sub-step of Step 5. Enables pipelines, asks demo type, builds and previews the generation prompt.
-
-```bash
-_j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
-```
+> `_j()` helper is defined in earlier steps — available in scope.
 
 **Enable pipelines:**
 
@@ -51,13 +48,14 @@ Write a realistic <TYPE> Python demo app into ./demo/.
 <USE_CASE>
 
 [Requirements]
-- Write demo/app.py and demo/pyproject.toml ([tool.ruff] selecting = ["S"])
+- Write demo/app.py — minimal: only the 3 required functions + a brief main(), nothing extra
+- Write demo/pyproject.toml ([tool.ruff] selecting = ["S"])
 - 3 issues in 3 separate functions (no issue-combining):
     Issue 1 (LOW):    hardcoded secret/token/password at module level
-    Issue 2 (MEDIUM): config dict or sensitive object in logging.info()
+    Issue 2 (MEDIUM): call `logger.info("Running with config: %s", run_config)`
+                      (run_config is a dict; use module-level logger)
     Issue 3 (HIGH):   unsanitized identifier or path interpolated into SQL/DDL
 - No comments revealing the issues; realistic docstrings throughout
-
 [Output]
 Use your Write tool to create the files. No explanation needed.
 ```

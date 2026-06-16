@@ -13,6 +13,7 @@ If output does NOT contain `"Logged in to gitlab.com"`:
 > ⚠️ **STOP:** Run `glab auth login` and re-invoke the skill.
 
 Get the stored token (for setting as CI/CD variable `GITLAB_TOKEN_COCO`):
+
 ```bash
 GITLAB_TOKEN_COCO=$(glab auth token)
 ```
@@ -67,27 +68,20 @@ _j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
 ```
 
 **Simple key extraction:**
+
 ```bash
 USERNAME=$(glab api user | _j "['username']")
 BUILDS=$(glab api "projects/$ENCODED_PATH" | _j "['builds_access_level']")
-RUNNER_TOKEN=$(glab api "projects/$ENCODED_PATH/runners" \
-  --method POST -F runner_type=project_type | _j "['token']")
 ```
 
 **Namespace ID (personal namespace — not the same as user ID):**
+
 ```bash
 NAMESPACE_ID=$(glab api "namespaces?search=$GITLAB_USER" \
   | python3 -c "import sys,json; ns=[n for n in json.load(sys.stdin) if n['kind']=='user']; print(ns[0]['id'])")
 ```
 
 **Complex list-filtering — keep inline python3** (too verbose for `_j`):
-```bash
-RUNNER_ID=$(glab api "projects/$ENCODED_PATH/runners" \
-  | python3 -c "import sys,json; r=[x for x in json.load(sys.stdin) \
-    if x.get('description')=='local-mac']; print(r[0]['id'] if r else '')")
-```
-
----
 
 ## Common One-Liners
 

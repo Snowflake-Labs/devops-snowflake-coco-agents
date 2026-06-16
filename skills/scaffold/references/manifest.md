@@ -25,6 +25,7 @@ MANIFEST_OPS="$SKILL_DIR/scripts/manifest_ops.py"
 
 Step files reference this section instead of inlining the block. After resolving
 SKILL_DIR, each step also sets the platform-specific manifest path:
+
 - GitHub: `MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"`
 - GitLab: `MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"`
 
@@ -55,8 +56,7 @@ Permissions: directory `700`, file `600` — set automatically by `manifest_ops.
 schema_version       = "1"
 
 [config]
-stale_threshold_s        = 3600   # gate check cache TTL (seconds)
-runner_stale_threshold_s = 300    # runner status TTL (shorter — can go offline)
+stale_threshold_s = 3600   # gate check cache TTL (seconds)
 
 [template]
 name       = "github-coco-agent"   # or "gitlab-coco-agent"
@@ -79,11 +79,6 @@ created_at = "2026-06-13T10:00:00Z"
 user      = ""   # filled by: manifest_ops.py fill-snowflake
 role      = ""
 warehouse = ""
-
-[runner]
-installed  = false
-pid        = 0    # filled by: manifest_ops.py fill-runner (at nohup launch)
-runner_id  = ""   # GitLab: numeric ID for API delete; GitHub: empty
 
 [steps.step_1]
 label        = "Create Project"
@@ -169,25 +164,11 @@ python3 "$MANIFEST_OPS" fill-snowflake \
 # Writes: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER / _ROLE / _WH
 ```
 
-### fill-runner — persist PID after nohup launch
-
-```bash
-nohup ".../run.sh" > runner.log 2>&1 &
-RUNNER_PID=$!
-echo $RUNNER_PID > runner.pid
-python3 "$MANIFEST_OPS" fill-runner \
-  --manifest   "$MANIFEST" \
-  --pid        "$RUNNER_PID" \
-  --runner-id  "$RUNNER_ID"   # GitLab only; omit or pass "" for GitHub
-```
-
 ### read — read a single value (for teardown variable loading)
 
 ```bash
 PREFIX=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.prefix)
 REPO_PATH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key project.repo_path)
-RUNNER_PID=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key runner.pid)
-RUNNER_ID=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key runner.runner_id)
 ```
 
 ### summary — print step progress (resume detection)
@@ -197,6 +178,7 @@ python3 "$MANIFEST_OPS" summary --manifest "$MANIFEST"
 ```
 
 Output:
+
 ```
 ========================================================
   Manifest : .coco-agent/manifest.toml
@@ -221,15 +203,6 @@ python3 "$MANIFEST_OPS" check-stale \
   --manifest "$MANIFEST" \
   --step     step_2 \
   || gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
-```
-
-For the runner gate (shorter threshold):
-```bash
-python3 "$MANIFEST_OPS" check-stale \
-  --manifest  "$MANIFEST" \
-  --step      step_4 \
-  --threshold 300 \
-  || gh api "repos/$REPO_PATH/actions/runners" --jq '.runners | length'
 ```
 
 ---
@@ -257,6 +230,7 @@ fi
 ```
 
 **Resume routing:**
+
 - First step with `status = "IN_PROGRESS"` → crashed mid-execution, re-run from start of that step
 - First step with `status = "PENDING"` after a run of `COMPLETE` → start here
 - All `COMPLETE` → jump to Watch the Loop
