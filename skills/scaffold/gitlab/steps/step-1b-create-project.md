@@ -1,13 +1,15 @@
 # Step 1b: Create New GitLab Project from Template
-
+>
 > Sub-step of Step 1 — Path B (`IMPORT_MODE = false`).
-
 Check for collision first:
+
 ```bash
 glab api "projects/$ENCODED_PATH" 2>&1
 ```
+
 If EXISTS and `USING_GENERATED = true`: rotate petname (up to 3×), re-present name question.
 If EXISTS and `USING_GENERATED = false`:
+
 ```
 ask_user_question:
   header: "Project exists"
@@ -17,10 +19,12 @@ ask_user_question:
     - label: "Choose a different name"
     - label: "Abort"
 ```
-If "Use the existing project": clone, run `manifest_ops.py summary`, detect completed steps, present resume options.
+
+If "Use the existing project": clone, run `manifest_ops.py summary`, detect completed steps, present resume options
 ---
 
 ⚠️ MANDATORY: call `enter_plan_mode`. Present:
+
 ```
 Creates: $PROJECT_PATH  ($PROJECT_VISIBILITY, blank then populated from gitlab-coco-agent template)
 Clones:  ./$PROJECT_NAME  (clean single commit — no template history)
@@ -37,25 +41,16 @@ for _i in 1 2 3; do
   CREATE_OUT=$(glab api "projects" --method POST \
     -F "name=$PROJECT_NAME" -F "namespace_id=$NAMESPACE_ID" \
     -F "visibility=$PROJECT_VISIBILITY" -F "initialize_with_readme=false" 2>&1)
-  if echo "$CREATE_OUT" | python3 -c "
-import sys,json
-try:
-  e=json.loads(sys.stdin.read())
-  msg=str(e.get('message',{}))
-  sys.exit(0 if 'Path has already been taken' in msg or 'has already been taken' in msg else 1)
-except: sys.exit(1)
-" 2>/dev/null; then
-    PROJECT_NAME=$(python3 -c "import random,string; print('-'.join(''.join(random.choices(string.ascii_lowercase,k=4)) for _ in range(2)))")
-    PROJECT_PATH="${GROUP}/${PROJECT_NAME}"
+  if echo "$CREATE_OUT" | python3 -c "import sys,json; e=json.loads(sys.stdin.read()); sys.exit(0 if 'taken' in str(e.get('message',{})) else 1)" 2>/dev/null; then
+    PROJECT_NAME=$(python3 -c "import random,string; print('-'.join(''.join(random.choices(string.ascii_lowercase,k=4)) for _ in range(2)))"); PROJECT_PATH="${GROUP}/${PROJECT_NAME}"
     ENCODED_PATH=$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PROJECT_PATH',safe=''))")
-    echo "Name taken — rotating to $PROJECT_NAME"
   else
     echo "✓ Project created: $PROJECT_PATH"; break
   fi
 done
 PROJECT_URL="https://gitlab.com/$PROJECT_PATH"
 LOCAL_DIR="$PROJECT_NAME"
-TEMPLATE_URL="https://gitlab.com/kameshsampath/gitlab-coco-agent"
+TEMPLATE_URL="https://gitlab.com/snowflake-dev/gitlab-coco-agent"
 REMOTE_URL="https://gitlab.com/$PROJECT_PATH.git"
 ```
 
@@ -75,6 +70,7 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
 ### What we did
+
 - Project created at `$PROJECT_URL` ($PROJECT_VISIBILITY) with a single clean commit
 - Pipelines disabled — re-enabled in Step 5 just before smoke test
 - Manifest initialized at `$PROJECT_NAME/.coco-agent/manifest.toml`

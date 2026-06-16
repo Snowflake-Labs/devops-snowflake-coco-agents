@@ -58,7 +58,7 @@ Always use full HTTPS URLs — never org/repo shorthand:
 |----------|-----|
 | This plugin | `https://github.com/Snowflake-Labs/devops-snowflake-coco-agents` |
 | GitHub template | `https://github.com/Snowflake-Labs/github-coco-agent` |
-| GitLab template | `https://gitlab.com/kameshsampath/gitlab-coco-agent` |
+| GitLab template | `https://gitlab.com/snowflake-dev/gitlab-coco-agent` |
 
 ## Plugin Names
 

@@ -5,7 +5,7 @@ on GitLab CI in one guided conversation.
 
 ## What gets created
 
-- A GitLab project from the [gitlab-coco-agent](https://gitlab.com/kameshsampath/gitlab-coco-agent) template
+- A GitLab project from the [gitlab-coco-agent](https://gitlab.com/snowflake-dev/gitlab-coco-agent) template
 - Three Snowflake objects (role, warehouse, SERVICE user) with OIDC trust
 - Six GitLab CI/CD variables including `COCO_MAX_AUTO`
 - Branch protection (push restricted, MR required)

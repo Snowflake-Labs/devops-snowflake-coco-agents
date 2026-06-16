@@ -3,6 +3,7 @@
 > Part of the GitLab scaffold skill.
 
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
+
 ```bash
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 SF_USER=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.user)
@@ -11,10 +12,12 @@ SF_WH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.ware
 ```
 
 **Gate check:**
+
 ```bash
 python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_3 \
   || snow sql -q "DESC USER $SF_USER" --format json 2>&1
 ```
+
 If empty or error: ⚠️ Complete Step 3 first.
 
 Validate bot token: `glab api user | python3 -c "import sys,json; print(json.load(sys.stdin)['username'])"` — if error, stop and fix token.
@@ -51,19 +54,21 @@ echo "✓ Quick start complete. Push code to $PROJECT_PATH to trigger the scan+f
 
 ### Full setup path (`SETUP_MODE = "full"`)
 
-Ask for local runner:
+Re-enable pipelines and apply branch protection (same as quick start), then ask:
+
 ```
 ask_user_question:
-  header: "Local runner"
-  question: "Set up a self-hosted local runner for testing?"
+  header: "Smoke test"
+  question: "Run the smoke test now to validate the pipeline end-to-end?"
   options:
-    - label: "Yes, install runner inside the project"
-      description: "Installs to .gitlab/runner/ — isolated per project, gitignored"
-    - label: "Skip — use GitLab.com shared runners"
-    - label: "Stop here"
+    - label: "Yes — run smoke test"
+      description: "Pushes a sample app to demo/, watches the scan→issue→fix loop"
+    - label: "Skip — done"
+      description: "Pipeline is live, trigger a scan manually when ready"
 ```
-- If "Yes": load `gitlab/steps/step-4b-runner.md`
-- If "Skip" or "Stop here": mark step complete, then ask about smoke test → Step 5 or stop
+
+- If "Yes": load `gitlab/steps/step-5-watch-loop.md`
+- If "Skip": mark step complete, done
 
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4

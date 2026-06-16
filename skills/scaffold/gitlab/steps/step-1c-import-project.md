@@ -6,7 +6,7 @@
 python3 "$MANIFEST_OPS" step-start --manifest ".coco-agent/$PROJECT_NAME/manifest.toml" --step step_1
 glab repo clone "$PROJECT_PATH" "$PROJECT_NAME"
 git clone --filter=blob:none --sparse \
-  https://gitlab.com/kameshsampath/gitlab-coco-agent /tmp/coco-tpl-$$
+  https://gitlab.com/snowflake-dev/gitlab-coco-agent /tmp/coco-tpl-$$
 git -C /tmp/coco-tpl-$$ sparse-checkout set .cortex/prompts
 mkdir -p "$PROJECT_NAME/.cortex/prompts"
 cp /tmp/coco-tpl-$$/.cortex/prompts/scan.md "$PROJECT_NAME/.cortex/prompts/"
@@ -40,6 +40,7 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
 ### What we did
+
 - Cloned `$PROJECT_PATH` into `./$PROJECT_NAME`
 - Copied/merged `.gitlab-ci.yml`, `scan.md`, `fix.md` from template
 - Manifest initialized and committed

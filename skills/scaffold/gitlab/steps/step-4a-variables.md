@@ -5,9 +5,11 @@
 > when `builds_access_level=disabled`. See `references/token-scopes.md`.
 
 **Collect bot token:**
+
 ```bash
 GITLAB_TOKEN_COCO=$(glab auth token)
 ```
+
 > Token is used only to set CI/CD variables and is stored masked.
 > For a long-lived dedicated PAT, create one with `api write_repository ai_features` scopes
 > at `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository,ai_features`
@@ -37,8 +39,6 @@ _v SNOWFLAKE_ACCOUNT   "$SNOWFLAKE_ACCOUNT" true
 _v SNOWFLAKE_USER      "$SF_USER"
 _v SNOWFLAKE_WAREHOUSE "$SF_WH"
 _v SNOWFLAKE_ROLE      "$SF_ROLE"
-read -r _PAT < <(security find-generic-password -s "$KEYCHAIN_SVC" -a "$SF_USER" -w)
-_v SNOWFLAKE_PAT       "$_PAT" true
 _v COCO_MAX_AUTO       "conservative"
 _v GITLAB_TOKEN_COCO   "$GITLAB_TOKEN_COCO" true
 _v GITLAB_HOST         "gitlab.com"
@@ -50,8 +50,9 @@ curl -sf -X PUT "https://gitlab.com/api/v4/projects/$ENCODED_PATH" \
 echo "✓ Pipelines re-disabled"
 ```
 
-**Verify:** `glab api "projects/$ENCODED_PATH/variables" | python3 -c "import sys,json; [print(v['key']) for v in json.load(sys.stdin)]"` — confirm 8 keys listed.
+**Verify:** `glab api "projects/$ENCODED_PATH/variables" | python3 -c "import sys,json; [print(v['key']) for v in json.load(sys.stdin)]"` — confirm 7 keys listed.
 
 ### What we did
-- 8 CI/CD variables set on `$PROJECT_PATH`
+
+- 7 CI/CD variables set on `$PROJECT_PATH`
 - Pipelines remain disabled — re-enabled in Step 5 just before smoke test

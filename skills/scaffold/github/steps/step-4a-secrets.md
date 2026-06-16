@@ -9,7 +9,6 @@ gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT
 gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "$SF_ROLE"
 gh secret set SNOWFLAKE_WAREHOUSE --repo "$REPO_PATH" --body "$SF_WH"
 gh secret set SNOWFLAKE_USER      --repo "$REPO_PATH" --body "$SF_USER"
-gh secret set SNOWFLAKE_PAT       --repo "$REPO_PATH" --body "$SNOWFLAKE_PAT"
 
 # Fix ceiling — repository variable (not a secret; visible in logs)
 gh variable set COCO_MAX_AUTO --repo "$REPO_PATH" --body "conservative"
@@ -22,13 +21,16 @@ gh api "repos/$REPO_PATH/actions/permissions/workflow" \
 ```
 
 **Verify:**
+
 ```bash
 gh secret list --repo "$REPO_PATH" 2>&1
 gh api "repos/$REPO_PATH/actions/permissions/workflow" \
   --jq '{permissions: .default_workflow_permissions, can_create_pr: .can_approve_pull_request_reviews}'
 ```
-Confirm 5 secrets listed and `can_create_pr: true`.
+
+Confirm 4 secrets listed and `can_create_pr: true`.
 
 ### What we did
-- 5 secrets set on `$REPO_PATH` (Snowflake context + local runner identity)
+
+- 4 secrets set on `$REPO_PATH` (Snowflake context via OIDC)
 - Workflow permissions: Actions can create PRs, write token is default

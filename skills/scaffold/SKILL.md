@@ -31,7 +31,7 @@ ask_user_question:
     - label: "GitHub"
       description: "GitHub Actions + snowflake-cli-action (https://github.com/Snowflake-Labs/github-coco-agent)"
     - label: "GitLab"
-      description: "GitLab CI + snowflake-cicd-component (https://gitlab.com/kameshsampath/gitlab-coco-agent)"
+      description: "GitLab CI + snowflake-cicd-component (https://gitlab.com/snowflake-dev/gitlab-coco-agent)"
 ```
 
 Then load the chosen sub-skill.

@@ -99,7 +99,7 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 | Platform | Template | Auth |
 |----------|----------|------|
 | GitHub Actions | [Snowflake-Labs/github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) | OIDC via [snowflake-cli-action](https://github.com/snowflakedb/snowflake-cli-action) |
-| GitLab CI | [kameshsampath/gitlab-coco-agent](https://gitlab.com/kameshsampath/gitlab-coco-agent) | OIDC via [snowflake-cicd-component](https://gitlab.com/snowflake-dev/snowflake-cicd-component) |
+| GitLab CI | [snowflake-dev/gitlab-coco-agent](https://gitlab.com/snowflake-dev/gitlab-coco-agent) | OIDC via [snowflake-cicd-component](https://gitlab.com/snowflake-dev/snowflake-cicd-component) |
 
 ---
 
