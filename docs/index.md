@@ -6,22 +6,22 @@ Scaffold a scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 mi
 
 <div class="grid cards" markdown>
 
--   **Scaffold in minutes**
+- **Scaffold in minutes**
 
     Six guided steps: repo creation, Snowflake OIDC provisioning, CI secrets, branch protection, optional smoke test.
     [Get started](getting-started.md)
 
--   **Agentic DevOps**
+- **Agentic DevOps**
 
     CoCo scores each finding and decides per-issue whether to auto-fix or escalate based on a team-configured policy.
     [How it works](smart-fix/overview.md)
 
--   **Snowflake-native**
+- **Snowflake-native**
 
     OIDC via Workload Identity Federation. No stored credentials. Your code analysis stays inside your Snowflake account boundary.
     [Architecture](scaffold/overview.md)
 
--   **IDD-structured**
+- **IDD-structured**
 
     Intent Compression Ratio 48. One `$devops-coco-agents:scaffold` instruction runs 48 distinct state-changing operations.
     [IDD and ICR](idd/overview.md)

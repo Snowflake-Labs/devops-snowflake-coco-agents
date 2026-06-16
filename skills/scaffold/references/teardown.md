@@ -87,6 +87,7 @@ DROP ROLE      IF EXISTS $SF_ROLE;
 ```
 
 Execute using the `snowflake_sql_execute` tool (inline — no file dependency):
+
 ```sql
 DROP USER      IF EXISTS $SF_USER;
 DROP WAREHOUSE IF EXISTS $SF_WH;
@@ -98,6 +99,7 @@ DROP ROLE      IF EXISTS $SF_ROLE;
 ## Kill + Deregister Runner
 
 **GitHub:**
+
 ```bash
 # Kill
 if [ "${RUNNER_PID:-0}" -gt 0 ]; then
@@ -112,6 +114,7 @@ fi
 ```
 
 **GitLab:**
+
 ```bash
 # Kill
 if [ "${RUNNER_PID:-0}" -gt 0 ]; then
