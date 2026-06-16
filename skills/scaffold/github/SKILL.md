@@ -26,7 +26,7 @@ Each step builds on the previous — jumping ahead leaves the repo in a broken s
 ⚠️ FORBIDDEN:
 - Do not modify the template repo (`https://github.com/Snowflake-Labs/github-coco-agent`) itself.
 - Do not create Snowflake objects beyond what `snowflake/setup.sql` provisions.
-- Do not set GitHub secrets other than the three listed in Configure.
+- Do not set GitHub secrets other than the four listed in Configure.
 - Do not enable Actions before Configure is complete.
 - **NEVER auto-merge PRs** — always require human review before merging fix PRs.
 
