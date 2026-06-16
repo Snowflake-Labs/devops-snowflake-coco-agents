@@ -38,10 +38,13 @@ Then load the chosen sub-skill.
 
 ## Shorthand Invocations
 
+When the user invokes a platform-specific shorthand, read the sub-skill file
+directly — do NOT try to invoke it as a named skill:
+
 ```
-$devops-coco-agents:scaffold              → ask platform, load sub-skill
-$devops-coco-agents:scaffold-for-github   → load skills/scaffold/github/SKILL.md directly
-$devops-coco-agents:scaffold-for-gitlab   → load skills/scaffold/gitlab/SKILL.md directly
+$devops-coco-agents:scaffold              → ask platform, then read sub-skill file
+$devops-coco-agents:scaffold-for-github   → read skills/scaffold/github/SKILL.md
+$devops-coco-agents:scaffold-for-gitlab   → read skills/scaffold/gitlab/SKILL.md
 ```
 
 ## What This Skill Does
