@@ -52,6 +52,8 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
 echo "✓ Quick start complete. Push code to $PROJECT_PATH to trigger the scan+fix loop."
 ```
 
+**ICR: /scaffold = 48** — 1 instruction → 48 automated ops. See `docs/idd/icr.md`.
+
 ### Full setup path (`SETUP_MODE = "full"`)
 
 Re-enable pipelines and apply branch protection (same as quick start), then ask:
@@ -73,3 +75,5 @@ ask_user_question:
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
 ```
+
+**ICR: /scaffold = 48** — 1 instruction → 48 automated ops. See `docs/idd/icr.md`.
