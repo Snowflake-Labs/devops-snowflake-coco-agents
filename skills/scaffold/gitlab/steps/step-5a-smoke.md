@@ -18,25 +18,18 @@ REPO_OR_PROJECT_NAME="$PROJECT_NAME"
 
 Load `shared/generate-demo.md`.
 
-After the shared step pushes demo/, verify CI triggered and watch the loop:
+After the shared step pushes demo/, watch the pipeline live:
 
 ```bash
 echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
-glab pipeline list --project "$PROJECT_PATH" 2>&1 | head -5
-```
 
-⚠️ MANDATORY pause (repeatable):
+# Live TUI view — refreshes automatically until pipeline completes.
+# Note: 'ci' namespace is deprecated; equivalent to 'glab pipeline status --live'
+glab ci status --live
 
+# Show results once pipeline finishes
+glab issue list --label coco-agent
+glab mr list --state opened
 ```
-ask_user_question:
-  header: "Watch the Loop"
-  question: "Check for issues and MRs on $PROJECT_PATH?"
-  options:
-    - label: "Check now"
-    - label: "Not done yet — wait"
-    - label: "Done — continue to revert"
-```
-
-If "Check now": `glab issue list --label coco-agent` and `glab mr list --state opened`
 
 When done, load `gitlab/steps/step-5c-verify-smart-fix.md`.

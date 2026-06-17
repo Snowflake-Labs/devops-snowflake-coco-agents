@@ -13,6 +13,7 @@ gh run list --repo "$REPO_PATH" --workflow cortex-scan.yml --limit 1 --json data
 ```
 
 Open the Actions summary and look for:
+
 ```
 ::notice::Fix ceiling: conservative (source: .github/coco-config.yml)
 ```
@@ -28,7 +29,7 @@ gh issue list --repo "$REPO_PATH" --label "coco:auto-fix"
 gh pr list   --repo "$REPO_PATH" --state open
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 open PR fixing `SCHEMA = "PUBLIC"`.
+Expected: 1 issue labeled `coco:auto-fix`, 1 open PR fixing `FALLBACK_DB_CONN` placeholder.
 
 ---
 
@@ -38,23 +39,24 @@ Expected: 1 issue labeled `coco:auto-fix`, 1 open PR fixing `SCHEMA = "PUBLIC"`.
 gh issue list --repo "$REPO_PATH" --label "coco:needs-review"
 ```
 
-Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+Expected: 2 issues — f-string SQL injection (high/medium) + subprocess shell=True injection (critical/high).
 
 ---
 
 ## Beat 4 — Comment trigger (`/coco fix`)
 
-Trigger the fix on the MEDIUM severity needs-review issue:
+Trigger the fix on the SQL injection (f-string) needs-review issue — the one that routes to `/coco fix`:
 
 ```bash
 ISSUE_NUM=$(gh issue list --repo "$REPO_PATH" --label "coco:needs-review" \
   --json number,title \
-  --jq '[.[] | select(.title | test("log|debug"; "i"))] | .[0].number')
+  --jq '[.[] | select(.title | test("sql|select|inject"; "i"))] | .[0].number')
 echo "Triggering /coco fix on issue #$ISSUE_NUM"
 gh issue comment "$ISSUE_NUM" --repo "$REPO_PATH" --body "/coco fix"
 ```
 
 Watch `cortex-comment-fix.yml` trigger in Actions:
+
 ```bash
 echo "$(gh repo view "$REPO_PATH" --json url -q .url)/actions"
 ```

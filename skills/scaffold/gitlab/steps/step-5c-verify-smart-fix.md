@@ -18,6 +18,7 @@ glab pipeline list --project "$PROJECT_PATH" 2>&1 | head -3
 ```
 
 Expected output in the scan-code job log:
+
 ```
 Fix ceiling: conservative (source: .gitlab/coco-config.yml)
 ```
@@ -33,7 +34,7 @@ glab issue list --label "coco:auto-fix"
 glab mr list --state opened
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `SCHEMA = "PUBLIC"`.
+Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `FALLBACK_DB_CONN` placeholder.
 
 ---
 
@@ -43,20 +44,20 @@ Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `SCHEMA = "PUBLIC"`.
 glab issue list --label "coco:needs-review"
 ```
 
-Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+Expected: 2 issues — f-string SQL injection (high/medium) + subprocess shell=True injection (critical/high).
 
 ---
 
 ## Beat 4 — Comment trigger (`@coco-agent fix`)
 
-Trigger the fix on the MEDIUM severity needs-review issue via a note:
+Trigger the fix on the SQL injection (f-string) needs-review issue via a note:
 
 ```bash
 ISSUE_IID=$(glab issue list --label "coco:needs-review" -P 1 \
   | python3 -c "
 import sys
 for line in sys.stdin:
-    if 'log' in line.lower() or 'debug' in line.lower():
+    if 'sql' in line.lower() or 'select' in line.lower() or 'inject' in line.lower():
         print(line.split()[0].lstrip('#'))
         break
 ")
@@ -66,6 +67,7 @@ glab api "projects/$ENCODED_PATH/issues/$ISSUE_IID/notes" \
 ```
 
 Watch the comment-fix pipeline job trigger:
+
 ```bash
 echo "https://gitlab.com/$PROJECT_PATH/-/pipelines"
 glab pipeline list --project "$PROJECT_PATH" 2>&1 | head -3
