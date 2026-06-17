@@ -7,7 +7,7 @@ Write a Streamlit sales analytics dashboard Python app to ./demo/app.py and ./de
 Requirements:
 
 - Minimal app: only 3 required functions + brief main()
-- Import `subprocess`, `streamlit as st`, `datetime`, and `from datetime import timezone` at the top
+- Import `subprocess`, `streamlit as st`, and `datetime` at the top
 - demo/pyproject.toml: include [tool.ruff.lint] select = ["S"]
 
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:

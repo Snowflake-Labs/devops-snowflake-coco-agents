@@ -7,7 +7,7 @@ Write a Snowpark ETL pipeline Python app to ./demo/app.py and ./demo/pyproject.t
 Requirements:
 
 - Minimal app: only 3 required functions + brief main()
-- Import `subprocess`, `datetime`, and `from datetime import timezone` at the top
+- Import `subprocess` and `datetime` at the top
 - demo/pyproject.toml: include [tool.ruff.lint] select = ["S"]
 
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:
