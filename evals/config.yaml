@@ -1,0 +1,34 @@
+# Eval suite for devops-coco-agents smoke-test demo generation.
+#
+# Tests that the demo generation prompt (skills/scaffold/shared/generate-demo.md)
+# reliably produces Python code with EXACTLY 3 issues routing to 3 fix modes:
+#   Issue 1 (LOW/low/high)       -> auto-fix under conservative ceiling
+#   Issue 2 (HIGH/medium/high)   -> needs-review
+#   Issue 3 (CRITICAL/high/high) -> needs-review
+#
+# Run from evals/:
+#   cortex-eval run --config config.yaml
+#   cortex-eval run --config config.yaml --parallel 3
+#
+# n_attempts: 5 tests determinism -- a reliable prompt should score 5/5.
+jobs_dir: "jobs"
+
+agents:
+    - import_path: "cortex_code_eval.adapters:CortexCode"
+      model_name: "claude-sonnet-4-6"
+      kwargs:
+          auto_accept_plans: true
+
+environment:
+    import_path: "cortex_code_eval.adapters:CortexCodeEnvironment"
+
+tasks:
+    - path: "smoke-test-de"
+    - path: "smoke-test-streamlit"
+
+# 5 attempts to measure determinism -- a reliable prompt should score 5/5
+n_attempts: 5
+
+orchestrator:
+    type: "local"
+    n_concurrent_trials: 3

@@ -4,3 +4,6 @@ coco-*/
 *.code-workspace
 .cortex/plans/
 /site/
+evals/jobs/
+evals/.env
+evals/.venv/

@@ -1,0 +1,18 @@
+[project]
+name = "evals"
+version = "0.1.0"
+description = "Smoke-test determinism evals for devops-coco-agents"
+requires-python = ">=3.12"
+dependencies = [
+    "cortex-code-eval>=0.0.42",
+    "pytest>=8.4.1",
+    "pytest-json-ctrf==0.3.5",
+]
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"
+
+[[tool.uv.index]]
+name = "artifactory"
+url = "https://artifactory.ci1.us-west-2.aws-dev.app.snowflake.com/artifactory/api/pypi/internal-development-pypi-dex-local/simple"
