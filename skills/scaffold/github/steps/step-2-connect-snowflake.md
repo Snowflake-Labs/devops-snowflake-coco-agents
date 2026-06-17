@@ -3,16 +3,19 @@
 > Part of the GitHub scaffold skill.
 
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
+
 ```bash
 MANIFEST="$REPO_NAME/.coco-agent/manifest.toml"
 ```
 
 **Gate check (staleness-aware):**
+
 ```bash
-python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_2 \
+python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_1 \
   || gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
 ```
-If `true`: ⚠️ Actions still enabled. Complete Step 2 first.
+
+If `true`: ⚠️ Actions still enabled. Check Step 1 completed successfully.
 
 ---
 

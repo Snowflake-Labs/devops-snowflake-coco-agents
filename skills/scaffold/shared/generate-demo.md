@@ -78,7 +78,7 @@ If **Change use case**: loop back to Custom text input. If **Cancel**: load call
 ## Generate + commit
 
 ```bash
-python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_5
+python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
 ```
 
 Write the files directly into `$REPO_OR_PROJECT_NAME/demo/` using your **Write tool**.

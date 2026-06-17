@@ -30,10 +30,9 @@ python3 "$MANIFEST_OPS" move \
 git -C "$PROJECT_NAME" add .cortex/ .gitlab-ci.yml .coco-agent/
 git -C "$PROJECT_NAME" commit -m "ci: add CoCo scan+fix pipeline and manifest [skip ci]"
 git -C "$PROJECT_NAME" push
-```
 
-> ⚠️ Note: Pipelines are NOT disabled — the existing project may have active CI.
-> Step-2 will offer to disable pipelines temporarily during Snowflake setup.
+# Disable pipelines — prevents jobs firing before CI/CD variables are configured
+glab api "projects/$ENCODED_PATH" --method PUT -F "builds_access_level=disabled" 2>&1
 
 ```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
@@ -43,4 +42,4 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 
 - Cloned `$PROJECT_PATH` into `./$PROJECT_NAME`
 - Copied/merged `.gitlab-ci.yml`, `scan.md`, `fix.md` from template
-- Manifest initialized and committed
+- Pipelines disabled — re-enabled in Step 4 (configure) just before go-live

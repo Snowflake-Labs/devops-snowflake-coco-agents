@@ -31,12 +31,10 @@ git -C "$REPO_NAME" add .github/workflows/cortex-scan.yml \
   .cortex/ .coco-agent/
 git -C "$REPO_NAME" commit -m "ci: add CoCo scan+fix workflows, prompts, config, and manifest [skip ci]"
 git -C "$REPO_NAME" push
-```
 
-> ⚠️ Note: Actions are NOT disabled — the existing repo may have active CI.
-> Step-2 will offer to disable Actions temporarily during Snowflake setup.
+# Disable Actions — prevents workflows firing before secrets are configured
+gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": false}'
 
-```bash
 python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
@@ -46,4 +44,4 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 - Copied workflows: `cortex-scan.yml`, `cortex-fix.yml`, `cortex-comment-fix.yml`
 - Copied prompts: `scan.md`, `fix.md`
 - Copied config: `.github/coco-config.yml`, `.github/secret_scanning.yml`
-- Manifest initialized and committed
+- Actions disabled — re-enabled in Step 4 (configure) just before go-live

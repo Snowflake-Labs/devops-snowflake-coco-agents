@@ -44,7 +44,7 @@ Schema (both GitHub and GitLab, identical structure):
     started_at   = ""
     completed_at = ""
 
-    ...steps step_2 through step_5...
+    ...steps step_2 through step_4...
 
 Usage:
     python3 manifest_ops.py <command> [options]
@@ -76,10 +76,9 @@ SCHEMA_VERSION = "1"
 
 STEP_LABELS = {
     "step_1": "Create Project",
-    "step_2": "Hold Before Go-Live",
-    "step_3": "Connect Snowflake",
-    "step_4": "Configure",
-    "step_5": "Watch the Loop",
+    "step_2": "Connect Snowflake",
+    "step_3": "Configure",
+    "step_4": "Watch the Loop",
 }
 
 # ---------------------------------------------------------------------------

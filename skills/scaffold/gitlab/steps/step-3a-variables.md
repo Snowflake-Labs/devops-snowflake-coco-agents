@@ -15,7 +15,7 @@ GITLAB_TOKEN_COCO=$(glab auth token)
 > at `https://gitlab.com/-/user_settings/personal_access_tokens?name=coco-bot&scopes=api,write_repository,ai_features`
 
 ```bash
-python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
+python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_2
 
 cd "$PROJECT_NAME"
 GLAB_BASE="https://gitlab.com/api/v4/projects/$ENCODED_PATH"

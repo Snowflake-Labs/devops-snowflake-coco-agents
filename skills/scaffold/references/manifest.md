@@ -87,24 +87,18 @@ started_at   = ""
 completed_at = ""
 
 [steps.step_2]
-label        = "Hold Before Go-Live"
-status       = "PENDING"
-started_at   = ""
-completed_at = ""
-
-[steps.step_3]
 label        = "Connect Snowflake"
 status       = "PENDING"
 started_at   = ""
 completed_at = ""
 
-[steps.step_4]
+[steps.step_3]
 label        = "Configure"
 status       = "PENDING"
 started_at   = ""
 completed_at = ""
 
-[steps.step_5]
+[steps.step_4]
 label        = "Watch the Loop"
 status       = "PENDING"
 started_at   = ""
@@ -188,10 +182,9 @@ Output:
 
   Step progress:
     ✓  step_1: Create Project [COMPLETE]  (5m ago)
-    ✓  step_2: Hold Before Go-Live [COMPLETE]  (4m ago)
-    →  step_3: Connect Snowflake [IN_PROGRESS]   ← crashed here
-    ○  step_4: Configure [PENDING]
-    ○  step_5: Watch the Loop [PENDING]
+    →  step_2: Connect Snowflake [IN_PROGRESS]   ← crashed here
+    ○  step_3: Configure [PENDING]
+    ○  step_4: Watch the Loop [PENDING]
 ========================================================
 ```
 
@@ -201,7 +194,7 @@ Output:
 # Use manifest cache if step N is COMPLETE and fresh; otherwise run API call
 python3 "$MANIFEST_OPS" check-stale \
   --manifest "$MANIFEST" \
-  --step     step_2 \
+  --step     step_1 \
   || gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled
 ```
 

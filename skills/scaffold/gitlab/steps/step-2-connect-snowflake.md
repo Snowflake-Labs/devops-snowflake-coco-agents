@@ -3,17 +3,20 @@
 > Part of the GitLab scaffold skill.
 
 Resolve `SKILL_DIR` and `MANIFEST_OPS` per `references/manifest.md` (## SKILL_DIR Resolution).
+
 ```bash
 MANIFEST="$PROJECT_NAME/.coco-agent/manifest.toml"
 _j() { python3 -c "import sys,json; print(json.load(sys.stdin)$1)"; }
 ```
 
 **Gate check (staleness-aware):**
+
 ```bash
-python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_2 \
+python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_1 \
   || glab api "projects/$ENCODED_PATH" | _j "['builds_access_level']"
 ```
-If not `"disabled"`: ⚠️ Pipelines still enabled. Complete Step 2 first.
+
+If not `"disabled"`: ⚠️ Pipelines still enabled. Check Step 1 completed successfully.
 
 ---
 

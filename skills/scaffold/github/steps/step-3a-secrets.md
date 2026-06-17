@@ -3,7 +3,7 @@
 > Sub-step of Step 4. Load after gate check passes.
 
 ```bash
-python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_4
+python3 "$MANIFEST_OPS" step-start --manifest "$MANIFEST" --step step_2
 
 gh secret set SNOWFLAKE_ACCOUNT   --repo "$REPO_PATH" --body "$SNOWFLAKE_ACCOUNT"
 gh secret set SNOWFLAKE_ROLE      --repo "$REPO_PATH" --body "$SF_ROLE"

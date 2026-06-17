@@ -212,10 +212,9 @@ Execute each step by loading the corresponding file. Steps must be executed in o
 | Step | File | Mode |
 |------|------|------|
 | 1. Create Project | `skills/scaffold/github/steps/step-1-create-project.md` | both |
-| 2. Hold Before Go-Live | `skills/scaffold/github/steps/step-2-hold-before-golive.md` | both |
-| 3. Connect Snowflake | `skills/scaffold/github/steps/step-3-connect-snowflake.md` | both |
-| 4. Configure | `skills/scaffold/github/steps/step-4-configure.md` | both (routes by SETUP_MODE) |
-| 5. Watch the Loop | `skills/scaffold/github/steps/step-5-watch-loop.md` | full only |
-| 6. Clean Up | `skills/scaffold/github/steps/step-6-clean-up.md` | on demand |
+| 2. Connect Snowflake | `skills/scaffold/github/steps/step-3-connect-snowflake.md` | both |
+| 3. Configure | `skills/scaffold/github/steps/step-4-configure.md` | both (routes by SETUP_MODE) |
+| 4. Watch the Loop | `skills/scaffold/github/steps/step-5-watch-loop.md` | full only |
+| 5. Clean Up | `skills/scaffold/github/steps/step-6-clean-up.md` | on demand |
 
 Load each step file and execute it fully before proceeding to the next.

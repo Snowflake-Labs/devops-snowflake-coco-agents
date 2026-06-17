@@ -14,7 +14,7 @@ SF_WH=$(python3 "$MANIFEST_OPS" read --manifest "$MANIFEST" --key snowflake.ware
 **Gate check:**
 
 ```bash
-python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_3 \
+python3 "$MANIFEST_OPS" check-stale --manifest "$MANIFEST" --step step_2 \
   || snow sql -q "DESC USER $SF_USER" --format json 2>&1
 ```
 
@@ -48,7 +48,7 @@ else
   glab api "projects/$ENCODED_PATH/protected_branches" \
     -X POST -F name=main -F push_access_level=0 -F merge_access_level=40
 fi
-python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_2
 echo "✓ Quick start complete. Push code to $PROJECT_PATH to trigger the scan+fix loop."
 ```
 
@@ -73,7 +73,7 @@ ask_user_question:
 - If "Skip": mark step complete, done
 
 ```bash
-python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_2
 ```
 
 **ICR: /scaffold = 48** — 1 instruction → 48 automated ops. See `docs/idd/icr.md`.

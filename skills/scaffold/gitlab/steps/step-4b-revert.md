@@ -16,7 +16,7 @@ glab api "projects/$ENCODED_PATH/protected_branches" \
 ```
 
 ```bash
-python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_5
+python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_4
 ```
 
 ### What we did
