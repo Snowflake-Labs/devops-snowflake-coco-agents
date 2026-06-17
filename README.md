@@ -129,24 +129,26 @@ cd evals
 
 # Set connection (needs access to internal Artifactory for cortex-code-eval)
 cp .env.example .env
-# Edit .env: SNOWFLAKE_CONNECTION_NAME=devrel-ent
+# Edit .env: SNOWFLAKE_CONNECTION_NAME=<your-connection-name>
+
+# Authenticate against internal Artifactory (required for cortex-code-eval)
+eval "$(sf artifact python auth --uv)"
 
 uv sync
 
-# Run both tasks, 5 attempts each, 3 parallel
-cortex-eval run --config config.yaml --parallel 3
+# Sanity check — 1 attempt on DE only, fast
+cortex-eval run --config config-single.yaml
 
-# Run only DE, single attempt (fast sanity check)
-cortex-eval run --config config.yaml \
-  --tasks smoke-test-de --n_attempts 1
+# Full determinism suite — both tasks × 5 attempts
+cortex-eval run --config config.yaml
 ```
 
 Results are written to `evals/jobs/`.
 
 ### Iterating on the prompt
 
-When a task fails, update `evals/smoke-test-de/instruction.md` or
-`evals/smoke-test-streamlit/instruction.md` and re-run until you hit 5/5.
+When a task fails, update `evals/scaffold/smoke-test-de/instruction.md` or
+`evals/scaffold/smoke-test-streamlit/instruction.md` and re-run until you hit 5/5.
 The accepted prompt then gets copied to
 `skills/scaffold/shared/generate-demo.md`.
 
