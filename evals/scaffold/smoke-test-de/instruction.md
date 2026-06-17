@@ -13,9 +13,9 @@ Requirements:
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:
 
 Function 1 (log_batch_start):
-  Accepts `batch_id: str`.
-  Gets the current UTC timestamp using `datetime.datetime.utcnow()` and returns a log string.
-  Docstring describes logging the batch start time for pipeline monitoring.
+  No arguments.
+  Gets the current UTC timestamp using `datetime.datetime.utcnow()` and returns it as an ISO format string.
+  Docstring describes returning pipeline run timestamps.
 
 Function 2 (query_orders):
   Accepts `session, schema: str, table: str, region: str, date_from: str`.

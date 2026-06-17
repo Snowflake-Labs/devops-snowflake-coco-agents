@@ -166,7 +166,6 @@ def test_deprecation_finding_is_autofix(scan_results):
     dep_findings = [
         f for f in scan_results["findings"]
         if any(kw in f.get("issue", "").lower() for kw in ("utcnow", "deprecated", "timezone"))
-        or f.get("function", "").lower() == "get_default_filters"
     ]
     assert dep_findings, (
         "No datetime.utcnow() deprecation finding in scan-results.json. "
