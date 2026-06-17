@@ -77,7 +77,7 @@ Use your glab auth token (convenient)
 Use a dedicated long-lived PAT (api + write_repository scopes)
 ```
 
-Then sets 6 CI/CD variables:
+Then sets 7 CI/CD variables:
 
 | Variable | Masked |
 |----------|--------|
@@ -97,17 +97,17 @@ branch protection (push restricted to MRs). Done.
 
 ## Step 5 — Watch the Loop (full setup only)
 
-CoCo copies a small Python app with three intentional bugs into `demo/`, enables
-pipelines, and pushes. Each issue is scored and routed based on the `conservative`
-ceiling set in step 4.
+CoCo asks which demo app type to generate (DE / Streamlit / Custom), shows a
+generation prompt for confirmation, then writes the files directly into `demo/`
+using its Write tool. Pipelines are enabled and the commit is pushed.
 
 ### What the scan finds
 
 | Issue | Severity | Routing (conservative) |
 |-------|----------|----------------------|
-| Hardcoded schema: `SCHEMA = "PUBLIC"` | low | **auto-fix** |
-| Sensitive data in debug log | medium | **needs-review** |
-| SQL injection in `query_table()` | high | **needs-review** |
+| `FALLBACK_DB_CONN = "dev-placeholder-replace-before-deploy"` | low | **auto-fix** |
+| `f"SELECT * FROM {table_name} WHERE amount > 0"` | high | **needs-review** |
+| `subprocess.run(f"snow sql -q '{cmd}'", shell=True)` | critical | **needs-review** |
 
 ### Beat 1 — Ceiling source
 
@@ -130,7 +130,7 @@ glab issue list --label "coco:auto-fix"
 glab mr list --state opened
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `SCHEMA = "PUBLIC"`.
+Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing the `FALLBACK_DB_CONN` placeholder.
 
 ### Beat 3 — Needs-review labels (medium + high severity)
 
@@ -138,11 +138,11 @@ Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `SCHEMA = "PUBLIC"`.
 glab issue list --label "coco:needs-review"
 ```
 
-Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+Expected: 2 issues — f-string SQL injection (high/medium) + subprocess shell=True injection (critical/high).
 
 ### Beat 4 — Comment trigger (`@coco-agent fix`)
 
-Trigger the fix on the medium-severity needs-review issue via a note:
+Trigger the fix on the SQL injection (f-string) needs-review issue via a note:
 
 ```bash
 ENCODED_PATH="ksampath%2Fnimble-proxy"
@@ -150,7 +150,7 @@ ISSUE_IID=$(glab issue list --label "coco:needs-review" -P 1 \
   | python3 -c "
 import sys
 for line in sys.stdin:
-    if 'log' in line.lower() or 'debug' in line.lower():
+    if 'sql' in line.lower() or 'select' in line.lower() or 'inject' in line.lower():
         print(line.split()[0].lstrip('#'))
         break
 ")

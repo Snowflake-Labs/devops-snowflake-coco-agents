@@ -35,7 +35,7 @@ Choose **Quick start**.
 
 CI is live immediately — push any code to `main` to trigger the scan workflow.
 
-To run the smoke test later, push a Python app with bugs to `demo/` and watch the loop.
+To run the smoke test later, start a Full setup or re-run Step 5 — CoCo will ask which demo type to generate (DE / Streamlit / Custom), preview the prompt, and write the app directly into `demo/`.
 
 To change the fix ceiling, edit `.github/coco-config.yml` (or `.gitlab/coco-config.yml`) via PR:
 

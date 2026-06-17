@@ -101,17 +101,17 @@ branch protection (require 1 PR review). Done.
 
 ## Step 5 — Watch the Loop (full setup only)
 
-CoCo copies a small Python app with three intentional bugs into `demo/`, enables
-Actions, and pushes. Each issue is scored and routed based on the `conservative`
-ceiling set in step 4.
+CoCo asks which demo app type to generate (DE / Streamlit / Custom), shows a
+generation prompt for confirmation, then writes the files directly into `demo/`
+using its Write tool. Actions are enabled and the commit is pushed.
 
 ### What the scan finds
 
 | Issue | Severity | Routing (conservative) |
 |-------|----------|----------------------|
-| Hardcoded schema: `SCHEMA = "PUBLIC"` | low | **auto-fix** |
-| Sensitive data in debug log | medium | **needs-review** |
-| SQL injection in `query_table()` | high | **needs-review** |
+| `FALLBACK_DB_CONN = "dev-placeholder-replace-before-deploy"` | low | **auto-fix** |
+| `f"SELECT * FROM {table_name} WHERE amount > 0"` | high | **needs-review** |
+| `subprocess.run(f"snow sql -q '{cmd}'", shell=True)` | critical | **needs-review** |
 
 ### Beat 1 — Ceiling source
 
@@ -134,7 +134,7 @@ gh issue list --repo ksampath/nimble-proxy --label "coco:auto-fix"
 gh pr list   --repo ksampath/nimble-proxy --state open
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 PR fixing `SCHEMA = "PUBLIC"`.
+Expected: 1 issue labeled `coco:auto-fix`, 1 PR fixing the `FALLBACK_DB_CONN` placeholder.
 
 ### Beat 3 — Needs-review labels (medium + high severity)
 
@@ -142,16 +142,16 @@ Expected: 1 issue labeled `coco:auto-fix`, 1 PR fixing `SCHEMA = "PUBLIC"`.
 gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review"
 ```
 
-Expected: 2 issues — debug-log info disclosure (medium) + SQL injection (high).
+Expected: 2 issues — f-string SQL injection (high/medium) + subprocess shell=True injection (critical/high).
 
 ### Beat 4 — Comment trigger (`/coco fix`)
 
-Trigger the fix on the medium-severity needs-review issue:
+Trigger the fix on the SQL injection (f-string) needs-review issue:
 
 ```bash
 ISSUE_NUM=$(gh issue list --repo ksampath/nimble-proxy --label "coco:needs-review" \
   --json number,title \
-  --jq '[.[] | select(.title | test("log|debug"; "i"))] | .[0].number')
+  --jq '[.[] | select(.title | test("sql|select|inject"; "i"))] | .[0].number')
 gh issue comment "$ISSUE_NUM" --repo ksampath/nimble-proxy --body "/coco fix"
 ```
 
