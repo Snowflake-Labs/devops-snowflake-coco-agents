@@ -103,6 +103,55 @@ Full docs at **[snowflake-labs.github.io/devops-snowflake-coco-agents](https://s
 
 ---
 
+## Testing (Eval Suite)
+
+Determinism of the smoke-test demo generation is validated with
+[`cortex-code-eval`](https://github.com/snowflake-eng/cortex-code-eval) in
+[`~/git-emu/cortex-code-skills`](https://github.com/snowflake-eng/cortex-code-skills).
+
+### What it tests
+
+Two tasks run 5 attempts each to measure the pass rate of the generation prompt:
+
+| Task | What it checks |
+|---|---|
+| `smoke-test-de` | DE (Snowpark ETL) app: 1 auto-fix + ≥2 needs-review, SQL injection + subprocess present |
+| `smoke-test-streamlit` | Streamlit app: same routing constraints |
+
+A reliable prompt scores **5/5** (100%). Below 5/5 means the generation prompt
+needs iteration.
+
+### Running locally
+
+```bash
+# From the cortex-code-skills repo
+cd ~/git-emu/cortex-code-skills/evals
+
+# Set connection (needs access to internal Artifactory for cortex-code-eval)
+cp .env.example .env
+# Edit .env: SNOWFLAKE_CONNECTION_NAME=devrel-ent
+
+uv sync
+
+# Run both tasks, 5 attempts each, 3 parallel
+cortex-eval run --config devops-coco-agents/config.yaml --parallel 3
+
+# Run only DE, single attempt (fast sanity check)
+cortex-eval run --config devops-coco-agents/config.yaml \
+  --tasks smoke-test-de --n_attempts 1
+```
+
+Results are written to `evals/devops-coco-agents/jobs/`.
+
+### Iterating on the prompt
+
+When a task fails, update `smoke-test-de/instruction.md` or
+`smoke-test-streamlit/instruction.md` and re-run until you hit 5/5.
+The accepted prompt then gets copied to
+`skills/scaffold/shared/generate-demo.md`.
+
+---
+
 ## Contributing
 
 Commits must follow [conventional commit](https://www.conventionalcommits.org/) format.
