@@ -102,9 +102,9 @@ def scan_results() -> dict:
 
 def test_agent_wrote_demo_app(full_text):
     """Agent must write the demo Python app with all three required functions."""
-    assert all(fn in full_text for fn in ("validate_batch", "query_orders", "run_maintenance")), (
+    assert all(fn in full_text for fn in ("log_batch_start", "query_orders", "run_maintenance")), (
         "Not all three required functions found in the trajectory. "
-        "Expected validate_batch, query_orders, and run_maintenance to be written."
+        "Expected log_batch_start, query_orders, and run_maintenance to be written."
     )
 
 
@@ -116,11 +116,11 @@ def test_agent_wrote_scan_results(full_text):
     )
 
 
-def test_agent_found_assert_issue(full_text):
-    """Agent must detect the assert validation issue (Issue 1 — auto-fix target)."""
-    assert any(ind in full_text for ind in ("assert", "s101")), (
-        "Agent did not mention the assert issue in its response. "
-        "validate_batch uses 'assert batch_df.count() >= min_rows' — expected S101 or assert."
+def test_agent_found_deprecation_issue(full_text):
+    """Agent must detect the datetime.utcnow() deprecation (Issue 1 — auto-fix target)."""
+    assert any(ind in full_text for ind in ("utcnow", "deprecated", "timezone.utc", "datetime.now", "w0612")), (
+        "Agent did not mention the datetime.utcnow() deprecation in its response. "
+        "log_batch_start uses datetime.utcnow() — expected deprecation warning."
     )
 
 
@@ -161,24 +161,22 @@ def test_at_least_two_needs_review(scan_results):
     )
 
 
-def test_assert_finding_is_autofix(scan_results):
-    """The assert finding must be routed auto-fix, not needs-review."""
-    assert_findings = [
+def test_deprecation_finding_is_autofix(scan_results):
+    """The datetime.utcnow() deprecation finding must be routed auto-fix."""
+    dep_findings = [
         f for f in scan_results["findings"]
-        if "assert" in f.get("issue", "").lower()
-        or "assert" in f.get("function", "").lower()
-        or f.get("function", "").lower() == "validate_batch"
-        or "s101" in f.get("issue", "").lower()
+        if any(kw in f.get("issue", "").lower() for kw in ("utcnow", "deprecated", "timezone"))
+        or f.get("function", "").lower() == "log_batch_start"
     ]
-    assert assert_findings, (
-        "No assert-related finding in scan-results.json. "
-        "validate_batch uses assert — expected it to appear as a finding."
+    assert dep_findings, (
+        "No datetime.utcnow() deprecation finding in scan-results.json. "
+        "log_batch_start uses datetime.utcnow() — expected a deprecation finding."
     )
-    bad = [f for f in assert_findings if f.get("routing") != "auto-fix"]
+    bad = [f for f in dep_findings if f.get("routing") != "auto-fix"]
     assert not bad, (
-        f"Assert finding(s) were not routed to auto-fix: "
+        f"Deprecation finding(s) were not routed to auto-fix: "
         f"{[(f.get('function'), f.get('severity'), f.get('routing')) for f in bad]}. "
-        "assert (S101) should score SEVERITY=low → auto-fix."
+        "datetime.utcnow() deprecation should score SEVERITY=low → auto-fix."
     )
 
 

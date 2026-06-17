@@ -7,14 +7,15 @@ Write a Snowpark ETL pipeline Python app to ./demo/app.py and ./demo/pyproject.t
 Requirements:
 
 - Minimal app: only 3 required functions + brief main()
-- Import `subprocess` and `datetime` at the top
+- Import `subprocess`, `datetime`, and `from datetime import timezone` at the top
 - demo/pyproject.toml: include [tool.ruff.lint] select = ["S"]
 
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:
 
-Function 1 (validate_batch):
-  Uses `assert batch_df.count() >= min_rows` inside the function body.
-  Docstring describes batch size validation for the pipeline.
+Function 1 (log_batch_start):
+  Accepts `batch_id: str`.
+  Gets the current UTC timestamp using `datetime.datetime.utcnow()` and returns a log string.
+  Docstring describes logging the batch start time for pipeline monitoring.
 
 Function 2 (query_orders):
   Accepts `session, schema: str, table: str, region: str, date_from: str`.
