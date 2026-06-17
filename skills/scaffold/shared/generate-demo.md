@@ -39,11 +39,20 @@ Write a realistic <TYPE> Python demo app into ./demo/.
 [Requirements]
 - Write demo/app.py — minimal: only 3 required functions + brief main()
 - Write demo/pyproject.toml ([tool.ruff] selecting = ["S"])
-- 3 issues in 3 separate functions (no issue-combining):
-    Issue 1 (LOW):    hardcoded secret/token/password at module level
-    Issue 2 (MEDIUM): call `logger.info("Running with config: %s", run_config)`
-                      (run_config is a dict; use module-level logger)
-    Issue 3 (HIGH):   unsanitized identifier or path interpolated into SQL/DDL
+- 3 issues in 3 separate functions (no issue-combining). Each routes to a
+  DIFFERENT fix mode under COCO_MAX_AUTO=conservative:
+    Issue 1 (auto-fix):   hardcoded dev/placeholder connection string at module
+      level. Variable name must NOT contain PASSWORD, SECRET, TOKEN, KEY, or
+      CREDENTIAL (org secret scanning guardrails). Use:
+        `FALLBACK_DB_CONN = "dev-placeholder-replace-before-deploy"`
+      Severity=low (obviously fake), Complexity=low, Confidence=high.
+    Issue 2 (needs-review, /coco fix target): f-string SQL injection via a
+      function parameter: `f"SELECT * FROM {table_name} WHERE amount > 0"`
+      Severity=high, Complexity=medium (requires parameterized query).
+    Issue 3 (needs-review, stays open): subprocess command injection:
+      `subprocess.run(f"snow sql -q '{cmd}'", shell=True, check=True)`
+      Import subprocess at top of file.
+      Severity=critical, Complexity=high (shell=True is architectural).
 - No comments revealing the issues; realistic docstrings throughout
 [Output]
 Use your Write tool to create the files. No explanation needed.
