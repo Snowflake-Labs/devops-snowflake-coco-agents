@@ -116,11 +116,11 @@ def test_agent_wrote_scan_results(full_text):
     )
 
 
-def test_agent_found_deprecation_issue(full_text):
-    """Agent must detect the datetime.utcnow() deprecation (Issue 1 — auto-fix target)."""
-    assert any(ind in full_text for ind in ("utcnow", "deprecated", "timezone.utc", "datetime.now", "w0612")), (
-        "Agent did not mention the datetime.utcnow() deprecation in its response. "
-        "log_batch_start uses datetime.utcnow() — expected deprecation warning."
+def test_agent_found_pseudorandom_issue(full_text):
+    """Agent must detect the pseudo-random non-security use (Issue 1 — auto-fix target)."""
+    assert any(ind in full_text for ind in ("random", "s311", "pseudo-random", "randint", "pseudorandom")), (
+        "Agent did not mention the pseudo-random/S311 usage in its response. "
+        "log_batch_start uses random.randint() — expected S311 or pseudo-random mention."
     )
 
 
@@ -161,21 +161,21 @@ def test_at_least_two_needs_review(scan_results):
     )
 
 
-def test_deprecation_finding_is_autofix(scan_results):
+def test_pseudorandom_finding_is_autofix(scan_results):
     """The datetime.utcnow() deprecation finding must be routed auto-fix."""
     dep_findings = [
         f for f in scan_results["findings"]
-        if any(kw in f.get("issue", "").lower() for kw in ("utcnow", "deprecated", "timezone"))
+        if any(kw in f.get("issue", "").lower() for kw in ("random", "s311", "pseudo-random", "randint"))
     ]
     assert dep_findings, (
-        "No datetime.utcnow() deprecation finding in scan-results.json. "
-        "log_batch_start uses datetime.utcnow() — expected a deprecation finding."
+        "No pseudo-random finding in scan-results.json. "
+        "log_batch_start uses random.randint() — expected it to appear as a finding."
     )
     bad = [f for f in dep_findings if f.get("routing") != "auto-fix"]
     assert not bad, (
         f"Deprecation finding(s) were not routed to auto-fix: "
         f"{[(f.get('function'), f.get('severity'), f.get('routing')) for f in bad]}. "
-        "datetime.utcnow() deprecation should score SEVERITY=low → auto-fix."
+        "random.randint() non-security use should score SEVERITY=low → auto-fix."
     )
 
 

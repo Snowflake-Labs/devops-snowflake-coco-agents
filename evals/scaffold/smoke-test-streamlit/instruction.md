@@ -7,15 +7,16 @@ Write a Streamlit sales analytics dashboard Python app to ./demo/app.py and ./de
 Requirements:
 
 - Minimal app: only 3 required functions + brief main()
-- Import `subprocess`, `streamlit as st`, and `datetime` at the top
+- Import `subprocess`, `streamlit as st`, and `random` at the top
 - demo/pyproject.toml: include [tool.ruff.lint] select = ["S"]
 
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:
 
 Function 1 (get_default_filters):
   No arguments.
-  Gets the current UTC timestamp using `datetime.datetime.utcnow()` and returns a default date range tuple.
-  Docstring describes returning dashboard filter defaults.
+  Uses `random.randint(1000, 9999)` to generate a dashboard session ID for logging.
+  Docstring describes generating a session identifier for dashboard analytics.
+  (This is non-security use of pseudo-random — SEVERITY=low, not cryptographic.)
 
 Function 2 (load_region_data):
   Accepts `conn, schema: str, table: str, region: str, date_from: str`.

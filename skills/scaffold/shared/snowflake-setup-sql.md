@@ -31,7 +31,9 @@ Call `exit_plan_mode`. Execute **all statements in a single `snowflake_sql_execu
 (separate statements with `;` — do NOT execute them one at a time).
 
 **Verify** (single `snowflake_sql_execute`):
+
 ```sql
 SHOW ROLES LIKE '$SF_ROLE'; SHOW WAREHOUSES LIKE '$SF_WH';
 ```
+
 If empty or error: ⚠️ Re-run this step.

@@ -41,12 +41,13 @@ Write a realistic <TYPE> Python demo app into ./demo/.
 - Write demo/pyproject.toml ([tool.ruff] selecting = ["S"])
 - 3 issues in 3 separate functions (no issue-combining). Each routes to a
   DIFFERENT fix mode under COCO_MAX_AUTO=conservative:
-    Issue 1 (auto-fix):   a function that calls `datetime.datetime.utcnow()`
-      to get a timestamp. This is deprecated since Python 3.12 — use
-      `datetime.datetime.now(datetime.timezone.utc)` instead.
-      - SEVERITY=low (code quality / deprecation, not a security issue)
-      - Complexity=low (1-line fix), Confidence=high → auto-fix ✓
-      - Import `datetime` at the top of the file (no other datetime imports)
+    Issue 1 (auto-fix):   a function that uses `random.randint()` to generate
+      a non-security identifier (e.g. a batch run ID or session ID for logging).
+      This triggers S311 (pseudo-random not suitable for security) but in a
+      non-cryptographic context it is always SEVERITY=low.
+      - SEVERITY=low (non-security use, not cryptographic)
+      - Complexity=low (acknowledge or swap to secrets if ever needed), Confidence=high → auto-fix ✓
+      - Import `random` at the top of the file
     Issue 2 (needs-review, /coco fix target): f-string SQL injection via a
       function parameter: `f"SELECT * FROM {table_name} WHERE amount > 0"`
       Severity=high, Complexity=medium (requires parameterized query).

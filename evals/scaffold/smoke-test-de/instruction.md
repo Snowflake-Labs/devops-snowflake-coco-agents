@@ -7,15 +7,16 @@ Write a Snowpark ETL pipeline Python app to ./demo/app.py and ./demo/pyproject.t
 Requirements:
 
 - Minimal app: only 3 required functions + brief main()
-- Import `subprocess` and `datetime` at the top
+- Import `subprocess` and `random` at the top
 - demo/pyproject.toml: include [tool.ruff.lint] select = ["S"]
 
 The 3 functions MUST use EXACTLY these patterns — the surrounding code is yours:
 
 Function 1 (log_batch_start):
   No arguments.
-  Gets the current UTC timestamp using `datetime.datetime.utcnow()` and returns it as an ISO format string.
-  Docstring describes returning pipeline run timestamps.
+  Uses `random.randint(1000, 9999)` to generate a batch run ID for logging.
+  Docstring describes generating a batch identifier for pipeline run tracking.
+  (This is non-security use of pseudo-random — SEVERITY=low, not cryptographic.)
 
 Function 2 (query_orders):
   Accepts `session, schema: str, table: str, region: str, date_from: str`.
