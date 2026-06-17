@@ -1,7 +1,12 @@
 # Shared: Snowflake Setup SQL
 
-Execute using the `snowflake_sql_execute` tool with values provided by the calling step
-(`$SF_ROLE`, `$SF_USER`, `$SF_WH`, `$OIDC_ISSUER`, `$OIDC_SUBJECT`):
+> Loaded from step-2a. `$SF_ROLE`, `$SF_USER`, `$SF_WH`, `$OIDC_ISSUER`, `$OIDC_SUBJECT`
+> must be set by the calling step before loading this file.
+
+---
+
+⚠️ MANDATORY: call `enter_plan_mode`. Display the full SQL block below with values
+substituted so the user can review before anything runs:
 
 ```sql
 USE ROLE ACCOUNTADMIN;
@@ -22,8 +27,11 @@ ALTER USER $SF_USER SET
   );
 ```
 
-**Post-creation verify** (use `snowflake_sql_execute`):
+Call `exit_plan_mode`. Execute **all statements in a single `snowflake_sql_execute` call**
+(separate statements with `;` — do NOT execute them one at a time).
+
+**Verify** (single `snowflake_sql_execute`):
 ```sql
-DESC USER $SF_USER;
+SHOW ROLES LIKE '$SF_ROLE'; SHOW WAREHOUSES LIKE '$SF_WH';
 ```
-If empty or error: OIDC user not created — re-run step.
+If empty or error: ⚠️ Re-run this step.
