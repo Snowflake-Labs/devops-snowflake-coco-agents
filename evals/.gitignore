@@ -1,0 +1,7 @@
+.tmp_test/
+.venv/
+jobs/
+jobs-baseline/
+.env
+.envrc
+*.local.yaml

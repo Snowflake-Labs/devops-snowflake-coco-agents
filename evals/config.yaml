@@ -8,13 +8,11 @@
 #
 # Run from evals/:
 #   cortex-eval run --config config.yaml
-#   cortex-eval run --config config.yaml --parallel 3
-#
-# n_attempts: 5 tests determinism -- a reliable prompt should score 5/5.
 jobs_dir: "jobs"
 
 agents:
-    - import_path: "cortex_code_eval.adapters:CortexCode"
+    - name: "devops-coco-agents-skill"
+      import_path: "cortex_code_eval.adapters:CortexCode"
       model_name: "claude-sonnet-4-6"
       kwargs:
           auto_accept_plans: true
@@ -22,13 +20,10 @@ agents:
 environment:
     import_path: "cortex_code_eval.adapters:CortexCodeEnvironment"
 
-tasks:
-    - path: "smoke-test-de"
-    - path: "smoke-test-streamlit"
+# Dataset path is relative to the evals/ working directory.
+# Auto-discovers all task subdirectories under scaffold/.
+datasets:
+    - path: "scaffold"
 
-# 5 attempts to measure determinism -- a reliable prompt should score 5/5
+# 5 attempts to measure determinism — a reliable prompt should score 5/5
 n_attempts: 5
-
-orchestrator:
-    type: "local"
-    n_concurrent_trials: 3
