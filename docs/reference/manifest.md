@@ -29,11 +29,6 @@ user      = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_USER"
 role      = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_ROLE"
 warehouse = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_WH"
 
-[runner]
-pid       = 12345
-runner_id = ""
-```
-
 ## Step states
 
 | State | Meaning |

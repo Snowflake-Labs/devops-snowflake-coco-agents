@@ -60,4 +60,4 @@ Same smoke test as GitHub — scan-code job fires, issues and MRs appear automat
 
 ### Step 6 — Clean Up
 
-Disable pipelines → deregister runner → drop Snowflake objects → delete project → remove local clone.
+Disable pipelines — drop Snowflake objects — delete project — remove local clone.

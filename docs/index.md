@@ -39,7 +39,7 @@ Scaffold a scan-issue-fix pipeline on GitHub Actions or GitLab CI in under 20 mi
 | 3 | OIDC trust configured, zero long-lived secrets | CoCo |
 | 4 | CI secrets and fix-mode policy pushed | CoCo |
 | 5 | Optional: smoke test pushed — scan finds bugs, issues raised, fix PRs opened | CoCo |
-| 6 | Smoke test pushed — agent finds bugs, opens issues, raises PRs | CoCo |
+| 6 | Optional: clean up — disable CI, drop Snowflake objects, delete repo, remove clone | CoCo |
 
 ## Install
 
