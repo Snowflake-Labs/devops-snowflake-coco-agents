@@ -41,6 +41,7 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_1
 ```
 
 ### What we did
+
 - Cloned `$REPO_PATH` into `./$REPO_NAME`
 - Copied workflows: `cortex-scan.yml`, `cortex-fix.yml`, `cortex-comment-fix.yml`
 - Copied prompts: `scan.md`, `fix.md`
