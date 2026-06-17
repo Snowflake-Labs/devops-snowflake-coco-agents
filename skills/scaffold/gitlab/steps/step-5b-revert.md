@@ -23,3 +23,13 @@ python3 "$MANIFEST_OPS" step-complete --manifest "$MANIFEST" --step step_5
 
 - Smoke-test reverted — cleanup pipeline triggered
 - Main branch protected (MR reviews required, push restricted)
+
+### ICR
+
+```
+/scaffold ICR = 48
+```
+
+One instruction automated 48 state-changing operations: project + OIDC + tokens +
+CI ceiling + smoke-test + issue routing + branch protection.
+See `docs/idd/icr.md` for the full breakdown and adoption ladder.

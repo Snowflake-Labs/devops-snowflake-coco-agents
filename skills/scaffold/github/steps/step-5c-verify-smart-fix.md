@@ -22,14 +22,14 @@ Open the Actions summary and look for:
 
 ## Beat 2 — Auto-fix PR (LOW severity)
 
-The hardcoded-schema issue should have triggered an auto-fix PR automatically:
+The `datetime.utcnow()` deprecation issue should have triggered an auto-fix PR automatically:
 
 ```bash
 gh issue list --repo "$REPO_PATH" --label "coco:auto-fix"
 gh pr list   --repo "$REPO_PATH" --state open
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 open PR fixing `FALLBACK_DB_CONN` placeholder.
+Expected: 1 issue labeled `coco:auto-fix`, 1 open PR replacing `datetime.utcnow()` with `datetime.now(timezone.utc)`.
 
 ---
 

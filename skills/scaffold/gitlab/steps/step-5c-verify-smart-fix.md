@@ -27,14 +27,14 @@ Fix ceiling: conservative (source: .gitlab/coco-config.yml)
 
 ## Beat 2 — Auto-fix MR (LOW severity)
 
-The hardcoded-schema issue should have triggered an auto-fix MR automatically:
+The `datetime.utcnow()` deprecation issue should have triggered an auto-fix MR automatically:
 
 ```bash
 glab issue list --label "coco:auto-fix"
 glab mr list --state opened
 ```
 
-Expected: 1 issue labeled `coco:auto-fix`, 1 open MR fixing `FALLBACK_DB_CONN` placeholder.
+Expected: 1 issue labeled `coco:auto-fix`, 1 open MR replacing `datetime.utcnow()` with `datetime.now(timezone.utc)`.
 
 ---
 

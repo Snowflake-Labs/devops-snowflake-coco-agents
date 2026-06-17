@@ -41,14 +41,12 @@ Write a realistic <TYPE> Python demo app into ./demo/.
 - Write demo/pyproject.toml ([tool.ruff] selecting = ["S"])
 - 3 issues in 3 separate functions (no issue-combining). Each routes to a
   DIFFERENT fix mode under COCO_MAX_AUTO=conservative:
-    Issue 1 (auto-fix):   hardcoded development schema name as a MODULE-LEVEL
-      constant. It MUST appear IMMEDIATELY AFTER the import section, BEFORE any
-      function definitions. Do NOT put it inside any function — a variable inside
-      a connect/session/auth function scores MEDIUM (not LOW) regardless of value.
-      Use: `PIPELINE_SCHEMA = "DEV_REPLACE_BEFORE_PROD"`
-      - NOT CONN, TOKEN, PASSWORD, KEY, SECRET — those score MEDIUM
-      - A schema name scores SEVERITY=low (cannot authenticate on its own)
-      - Complexity=low (single-line constant), Confidence=high → auto-fix ✓
+    Issue 1 (auto-fix):   a function that calls `datetime.datetime.utcnow()`
+      to get a timestamp. This is deprecated since Python 3.12 — use
+      `datetime.datetime.now(datetime.timezone.utc)` instead.
+      - SEVERITY=low (code quality / deprecation, not a security issue)
+      - Complexity=low (1-line fix), Confidence=high → auto-fix ✓
+      - Import `datetime` at the top of the file (no other datetime imports)
     Issue 2 (needs-review, /coco fix target): f-string SQL injection via a
       function parameter: `f"SELECT * FROM {table_name} WHERE amount > 0"`
       Severity=high, Complexity=medium (requires parameterized query).
