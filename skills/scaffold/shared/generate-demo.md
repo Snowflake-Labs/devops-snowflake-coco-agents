@@ -27,11 +27,12 @@ Streamlit: *"Streamlit sales dashboard: Snowflake connection, region filters, re
 
 ## Build + preview prompt
 
-Load the full requirements from the appropriate shared file based on `<TYPE>`:
-- DE: `skills/scaffold/shared/demo-requirements-de.md`
-- Streamlit: `skills/scaffold/shared/demo-requirements-streamlit.md`
+Read the full requirements from the appropriate shared file based on `<TYPE>`:
+- DE: Read `skills/scaffold/shared/demo-requirements-de.md` using your Read tool
+- Streamlit: Read `skills/scaffold/shared/demo-requirements-streamlit.md` using your Read tool
 
-Display the loaded requirements to the user as the prompt preview.
+The file contains a complete IDD-structured prompt (Goal, Requirements, Constraints, Output).
+Execute ALL instructions in that file exactly as written — generate the demo app, scan it, and create the issue files.
 
 ⚠️ MANDATORY: `enter_plan_mode` → display full prompt → `exit_plan_mode`.
 
