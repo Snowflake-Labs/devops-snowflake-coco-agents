@@ -1,0 +1,24 @@
+# Eval suite for devops-coco-agents smoke-test demo generation.
+#
+# Tests that the demo generation prompt (skills/scaffold/shared/generate-demo.md)
+# reliably produces Python code with EXACTLY 3 issues routing to 3 fix modes:
+#   Issue 1 (LOW/low/high)       -> auto-fix under conservative ceiling
+#   Issue 2 (HIGH/medium/high)   -> needs-review
+#   Issue 3 (CRITICAL/high/high) -> needs-review
+#
+# Run from evals/:
+#   inspect-coco run .
+
+name: devops-coco-agents
+description: Determinism suite for demo generation routing
+skill: scaffold
+
+defaults:
+    epochs: 5
+    timeout_sec: 300
+    max_turns: 20
+    idd_threshold: 0.6
+    model: claude-sonnet-4-6
+
+# Auto-discovers tasks under scaffold/ (any dir with task.toml)
+tasks: auto

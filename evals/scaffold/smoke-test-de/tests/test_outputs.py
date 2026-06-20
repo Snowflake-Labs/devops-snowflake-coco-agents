@@ -1,216 +1,256 @@
 """
-Smoke tests for smoke-test-de routing determinism.
+Determinism verifier for smoke-test-de: Snowpark ETL demo generation + scan.
 
-Hybrid approach:
-  - Trajectory checks (5): verify the agent went through the expected steps
-  - Routing checks (4): read /app/scan-results.json for precise routing counts
-
-The target outcome is deterministic routing across all 5 attempts:
-  Issue 1 (validate_batch / assert)       → SEVERITY=low  → auto-fix
-  Issue 2 (query_orders / SQL f-string)   → SEVERITY=high → needs-review
-  Issue 3 (run_maintenance / subprocess)  → SEVERITY=critical → needs-review
+Validates that the agent deterministically produces:
+  - demo/app.py with exactly 3 functions using specific vulnerability patterns
+  - scan-results.json with correct routing (1 auto-fix + 2 needs-review)
+  - /app/issues/ with issue files matching production scan.md format
 """
 
 import json
 from pathlib import Path
+
 import pytest
 
-_TRAJECTORY_PATH = Path("/logs/agent/trajectory.json")
-_RESULTS_PATH = Path("/app/scan-results.json")
+DEMO_APP = Path("/workspace/demo/app.py")
+DEMO_TOML = Path("/workspace/demo/pyproject.toml")
+SCAN_RESULTS = Path("/app/scan-results.json")
+ISSUES_DIR = Path("/app/issues")
 
 
-# ── Trajectory helpers ────────────────────────────────────────────────────────
-
-def _load_trajectory():
-    if not _TRAJECTORY_PATH.exists():
-        return None
-    try:
-        return json.loads(_TRAJECTORY_PATH.read_text())
-    except (json.JSONDecodeError, OSError):
-        return None
-
-
-def _collect_assistant_text(trajectory: dict) -> str:
-    chunks = []
-    for step in trajectory.get("steps", []):
-        if step.get("source") != "agent":
-            continue
-        for field in ("assistant_response", "message", "final_response"):
-            v = step.get(field, "")
-            if isinstance(v, str) and v.strip():
-                chunks.append(v)
-    return "\n".join(chunks)
-
-
-def _collect_all_text(trajectory: dict) -> str:
-    chunks = []
-    for step in trajectory.get("steps", []):
-        for field in ("assistant_response", "message", "final_response"):
-            v = step.get(field, "")
-            if isinstance(v, str) and v.strip():
-                chunks.append(v)
-        for tc in step.get("tool_calls", []):
-            for field in ("input", "output", "result", "arguments"):
-                v = tc.get(field, "")
-                if isinstance(v, str) and v.strip():
-                    chunks.append(v)
-                elif isinstance(v, dict):
-                    chunks.append(json.dumps(v))
-            fn = tc.get("function_name", "")
-            if fn:
-                chunks.append(fn)
-    return "\n".join(chunks)
-
-
-pytest_plugins = ["cortex_code_eval.eval_container_tools.conftest"]
-
-
-# ── Fixtures ──────────────────────────────────────────────────────────────────
-
-@pytest.fixture
-def trajectory() -> dict:
-    t = _load_trajectory()
-    if not t:
-        pytest.skip("No trajectory available")
-    return t
+# ── Fixtures ────────────────────────────────────────────────────────────────
 
 
 @pytest.fixture
-def full_text(trajectory) -> str:
-    text = _collect_all_text(trajectory)
-    assert text.strip(), "Trajectory exists but no text found"
-    return text.lower()
+def app_content() -> str:
+    assert DEMO_APP.exists(), f"{DEMO_APP} does not exist"
+    return DEMO_APP.read_text().lower()
 
 
 @pytest.fixture
 def scan_results() -> dict:
-    assert _RESULTS_PATH.exists(), (
-        f"Agent did not write {_RESULTS_PATH}. "
-        "Step 3 of the instruction requires writing scan-results.json."
-    )
-    try:
-        data = json.loads(_RESULTS_PATH.read_text())
-    except json.JSONDecodeError as e:
-        pytest.fail(f"scan-results.json is not valid JSON: {e}")
+    assert SCAN_RESULTS.exists(), f"{SCAN_RESULTS} does not exist"
+    data = json.loads(SCAN_RESULTS.read_text())
     assert "findings" in data and isinstance(data["findings"], list), (
         "scan-results.json missing 'findings' list"
     )
     return data
 
 
-# ── Trajectory checks: did the agent follow the steps? ────────────────────────
-
-def test_agent_wrote_demo_app(full_text):
-    """Agent must write the demo Python app with all three required functions."""
-    assert all(fn in full_text for fn in ("log_batch_start", "query_orders", "run_maintenance")), (
-        "Not all three required functions found in the trajectory. "
-        "Expected log_batch_start, query_orders, and run_maintenance to be written."
-    )
-
-
-def test_agent_wrote_scan_results(full_text):
-    """Agent must write scan-results.json (Step 3)."""
-    assert "scan-results.json" in full_text, (
-        "Agent did not appear to write scan-results.json. "
-        "Step 3 requires writing routing results to /app/scan-results.json."
-    )
+@pytest.fixture
+def issue_files() -> list[dict]:
+    assert ISSUES_DIR.exists(), f"{ISSUES_DIR} does not exist"
+    files = sorted(ISSUES_DIR.glob("*.json"))
+    assert len(files) > 0, "No .json issue files in /app/issues/"
+    issues = []
+    for f in files:
+        issues.append(json.loads(f.read_text()))
+    return issues
 
 
-def test_agent_found_pseudorandom_issue(full_text):
-    """Agent must detect the pseudo-random non-security use (Issue 1 — auto-fix target)."""
-    assert any(ind in full_text for ind in ("random", "s311", "pseudo-random", "randint", "pseudorandom")), (
-        "Agent did not mention the pseudo-random/S311 usage in its response. "
-        "log_batch_start uses random.randint() — expected S311 or pseudo-random mention."
-    )
+# ── Demo app structure ──────────────────────────────────────────────────────
 
 
-def test_agent_found_sql_injection(full_text):
-    """Agent must detect the SQL f-string injection issue (Issue 2 — needs-review)."""
-    assert any(ind in full_text for ind in ("sql injection", "f-string", "s608", "string interpolation")), (
-        "Agent did not specifically mention SQL injection. "
-        "query_orders builds SQL via f-string — expected injection or S608 reference."
-    )
+def test_demo_app_exists():
+    assert DEMO_APP.exists()
 
 
-def test_agent_found_subprocess_injection(full_text):
-    """Agent must detect the subprocess shell injection issue (Issue 3 — needs-review)."""
-    assert any(ind in full_text for ind in ("subprocess", "shell=true", "s602", "s605", "command injection")), (
-        "Agent did not mention the subprocess/shell injection issue. "
-        "run_maintenance uses subprocess.run(..., shell=True) — expected subprocess or S60x."
-    )
+def test_demo_pyproject_exists():
+    assert DEMO_TOML.exists()
 
 
-# ── Routing checks: did the agent route correctly? ───────────────────────────
+def test_app_has_log_batch_start(app_content):
+    assert "log_batch_start" in app_content
+
+
+def test_app_has_query_orders(app_content):
+    assert "query_orders" in app_content
+
+
+def test_app_has_run_maintenance(app_content):
+    assert "run_maintenance" in app_content
+
+
+def test_app_uses_random(app_content):
+    assert "random" in app_content
+
+
+def test_app_uses_subprocess(app_content):
+    assert "subprocess" in app_content
+
+
+# ── Scan results routing ────────────────────────────────────────────────────
+
 
 def test_exactly_one_autofix(scan_results):
-    """Exactly 1 finding should be auto-fix (the assert issue — low/low/high)."""
-    count = scan_results.get("auto_fix", sum(1 for f in scan_results["findings"] if f.get("routing") == "auto-fix"))
-    assert count == 1, (
-        f"Expected exactly 1 auto-fix finding, got {count}. "
-        f"Only the assert issue (SEVERITY=low, COMPLEXITY=low, CONFIDENCE=high) should auto-fix. "
-        f"Findings: {json.dumps(scan_results['findings'], indent=2)}"
-    )
+    auto_fix = [f for f in scan_results["findings"] if f.get("routing") == "auto-fix"]
+    assert len(auto_fix) == 1, f"Expected 1 auto-fix, got {len(auto_fix)}"
 
 
 def test_at_least_two_needs_review(scan_results):
-    """At least 2 findings should be needs-review (SQL injection + subprocess)."""
-    count = scan_results.get("needs_review", sum(1 for f in scan_results["findings"] if f.get("routing") == "needs-review"))
-    assert count >= 2, (
-        f"Expected >= 2 needs-review findings, got {count}. "
-        "SQL injection (query_orders) and subprocess (run_maintenance) should both be needs-review."
-    )
+    needs_review = [f for f in scan_results["findings"] if f.get("routing") == "needs-review"]
+    assert len(needs_review) >= 2, f"Expected >= 2 needs-review, got {len(needs_review)}"
 
 
-def test_pseudorandom_finding_is_autofix(scan_results):
-    """The datetime.utcnow() deprecation finding must be routed auto-fix."""
-    dep_findings = [
-        f for f in scan_results["findings"]
-        if any(kw in f.get("issue", "").lower() for kw in ("random", "s311", "pseudo-random", "randint"))
-    ]
-    assert dep_findings, (
-        "No pseudo-random finding in scan-results.json. "
-        "log_batch_start uses random.randint() — expected it to appear as a finding."
-    )
-    bad = [f for f in dep_findings if f.get("routing") != "auto-fix"]
-    assert not bad, (
-        f"Deprecation finding(s) were not routed to auto-fix: "
-        f"{[(f.get('function'), f.get('severity'), f.get('routing')) for f in bad]}. "
-        "random.randint() non-security use should score SEVERITY=low → auto-fix."
-    )
-
-
-def test_subprocess_and_sql_are_needs_review(scan_results):
-    """SQL injection and subprocess findings must both be needs-review."""
+def test_random_finding_is_autofix(scan_results):
     findings = scan_results["findings"]
+    random_findings = [
+        f
+        for f in findings
+        if any(
+            kw in f.get("issue", "").lower()
+            for kw in ("random", "s311", "pseudo-random", "randint")
+        )
+        or f.get("function", "").lower() == "log_batch_start"
+    ]
+    assert random_findings, "No pseudo-random finding for log_batch_start"
+    bad = [f for f in random_findings if f.get("routing") != "auto-fix"]
+    assert not bad, f"Pseudo-random finding routed to '{bad[0].get('routing')}', expected auto-fix"
 
+
+def test_random_finding_severity_low(scan_results):
+    findings = scan_results["findings"]
+    random_findings = [
+        f
+        for f in findings
+        if any(
+            kw in f.get("issue", "").lower()
+            for kw in ("random", "s311", "pseudo-random", "randint")
+        )
+        or f.get("function", "").lower() == "log_batch_start"
+    ]
+    assert random_findings, "No pseudo-random finding for log_batch_start"
+    for f in random_findings:
+        assert f.get("severity") == "low", (
+            f"Pseudo-random finding severity should be 'low', got '{f.get('severity')}'"
+        )
+
+
+def test_sql_injection_is_needs_review(scan_results):
+    findings = scan_results["findings"]
     sql_findings = [
-        f for f in findings
-        if any(kw in f.get("issue", "").lower() for kw in ("sql", "inject", "f-string", "string"))
+        f
+        for f in findings
+        if any(kw in f.get("issue", "").lower() for kw in ("sql", "inject", "f-string"))
         or f.get("function", "").lower() == "query_orders"
     ]
-    subprocess_findings = [
-        f for f in findings
+    assert sql_findings, "No SQL injection finding for query_orders"
+    bad = [f for f in sql_findings if f.get("routing") != "needs-review"]
+    assert not bad, f"SQL injection routed to '{bad[0].get('routing')}', expected needs-review"
+
+
+def test_sql_injection_severity_high_or_critical(scan_results):
+    findings = scan_results["findings"]
+    sql_findings = [
+        f
+        for f in findings
+        if any(kw in f.get("issue", "").lower() for kw in ("sql", "inject", "f-string"))
+        or f.get("function", "").lower() == "query_orders"
+    ]
+    assert sql_findings, "No SQL injection finding for query_orders"
+    for f in sql_findings:
+        assert f.get("severity") in ("high", "critical"), (
+            f"SQL injection severity should be 'high' or 'critical', got '{f.get('severity')}'"
+        )
+
+
+def test_subprocess_is_needs_review(scan_results):
+    findings = scan_results["findings"]
+    sub_findings = [
+        f
+        for f in findings
         if any(kw in f.get("issue", "").lower() for kw in ("subprocess", "shell", "command"))
         or f.get("function", "").lower() == "run_maintenance"
     ]
+    assert sub_findings, "No subprocess finding for run_maintenance"
+    bad = [f for f in sub_findings if f.get("routing") != "needs-review"]
+    assert not bad, f"Subprocess routed to '{bad[0].get('routing')}', expected needs-review"
 
-    assert sql_findings, (
-        "No SQL injection finding in scan-results.json. "
-        "query_orders builds SQL via f-string — expected it to appear as a finding."
-    )
-    assert subprocess_findings, (
-        "No subprocess finding in scan-results.json. "
-        "run_maintenance uses subprocess.run(shell=True) — expected it to appear as a finding."
+
+def test_subprocess_severity_high_or_critical(scan_results):
+    findings = scan_results["findings"]
+    sub_findings = [
+        f
+        for f in findings
+        if any(kw in f.get("issue", "").lower() for kw in ("subprocess", "shell", "command"))
+        or f.get("function", "").lower() == "run_maintenance"
+    ]
+    assert sub_findings, "No subprocess finding for run_maintenance"
+    for f in sub_findings:
+        assert f.get("severity") in ("high", "critical"), (
+            f"Subprocess severity should be 'high' or 'critical', got '{f.get('severity')}'"
+        )
+
+
+# ── Issue files: production format ──────────────────────────────────────────
+
+
+def test_issue_count_matches_findings(scan_results, issue_files):
+    assert len(issue_files) >= len(scan_results["findings"]), (
+        f"Expected {len(scan_results['findings'])} issue files, found {len(issue_files)}"
     )
 
-    bad_sql = [f for f in sql_findings if f.get("routing") != "needs-review"]
-    bad_sub = [f for f in subprocess_findings if f.get("routing") != "needs-review"]
 
-    assert not bad_sql, (
-        f"SQL injection finding(s) not routed to needs-review: "
-        f"{[(f.get('function'), f.get('severity'), f.get('routing')) for f in bad_sql]}"
-    )
-    assert not bad_sub, (
-        f"Subprocess finding(s) not routed to needs-review: "
-        f"{[(f.get('function'), f.get('severity'), f.get('routing')) for f in bad_sub]}"
-    )
+def test_autofix_issue_has_coco_agent_prefix(issue_files):
+    autofix = [i for i in issue_files if "coco:auto-fix" in i.get("labels", [])]
+    assert len(autofix) >= 1, "No issue with 'coco:auto-fix' label"
+    for issue in autofix:
+        assert issue["title"].startswith("[coco-agent]"), (
+            f"Auto-fix title must start with '[coco-agent]', got: {issue['title']}"
+        )
+
+
+def test_needs_review_issue_no_prefix(issue_files):
+    needs_review = [i for i in issue_files if "coco:needs-review" in i.get("labels", [])]
+    assert len(needs_review) >= 2, f"Expected >= 2 needs-review issues, got {len(needs_review)}"
+    for issue in needs_review:
+        assert not issue["title"].startswith("[coco-agent]"), (
+            f"Needs-review title must NOT start with '[coco-agent]', got: {issue['title']}"
+        )
+        assert issue["title"].startswith("Bug:"), (
+            f"Needs-review title must start with 'Bug:', got: {issue['title']}"
+        )
+
+
+def test_autofix_issue_has_coco_agent_label(issue_files):
+    autofix = [i for i in issue_files if "coco:auto-fix" in i.get("labels", [])]
+    for issue in autofix:
+        assert "coco-agent" in issue["labels"], (
+            f"Auto-fix issue missing 'coco-agent' label: {issue['labels']}"
+        )
+        assert "coco-agent-security" in issue["labels"], (
+            f"Auto-fix issue missing 'coco-agent-security' label: {issue['labels']}"
+        )
+
+
+def test_needs_review_issue_has_security_label(issue_files):
+    needs_review = [i for i in issue_files if "coco:needs-review" in i.get("labels", [])]
+    for issue in needs_review:
+        assert "coco-agent-security" in issue["labels"], (
+            f"Needs-review issue missing 'coco-agent-security' label: {issue['labels']}"
+        )
+
+
+def test_issue_body_has_structured_format(issue_files):
+    for i, issue in enumerate(issue_files):
+        body = issue.get("body", "")
+        assert "Code:" in body, f"issue-{i + 1}.json body missing 'Code:' section"
+        assert "Problem:" in body, f"issue-{i + 1}.json body missing 'Problem:' section"
+        assert "Expected:" in body, f"issue-{i + 1}.json body missing 'Expected:' section"
+
+
+def test_issue_body_has_severity_footer(issue_files):
+    for i, issue in enumerate(issue_files):
+        body = issue.get("body", "")
+        assert "Severity:" in body, f"issue-{i + 1}.json body missing severity footer"
+        assert "Complexity:" in body, f"issue-{i + 1}.json body missing complexity in footer"
+        assert "Confidence:" in body, f"issue-{i + 1}.json body missing confidence in footer"
+        assert "Fix mode:" in body, f"issue-{i + 1}.json body missing fix mode in footer"
+
+
+def test_needs_review_body_has_coco_fix_hint(issue_files):
+    needs_review = [i for i in issue_files if "coco:needs-review" in i.get("labels", [])]
+    for issue in needs_review:
+        assert "/coco fix" in issue.get("body", ""), (
+            f"Needs-review issue body missing '/coco fix' trigger hint"
+        )

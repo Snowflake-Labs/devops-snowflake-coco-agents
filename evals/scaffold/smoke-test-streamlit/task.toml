@@ -4,16 +4,9 @@ version = "1.0"
 name = "smoke-test-streamlit"
 description = "Verify Streamlit demo generation routes 3 issues to 3 distinct fix modes"
 tags = ["devops-coco-agents", "smoke-test", "determinism"]
+epochs = 5
+idd_threshold = 0.6
 
 [agent]
 timeout_sec = 300
-
-[verifier]
-timeout_sec = 120
-
-[environment]
-dockerfile = "../docker/Dockerfile"
-build_timeout_sec = 600.0
-cpus = 1
-memory_mb = 4096
-storage_mb = 5120
+max_turns = 20
