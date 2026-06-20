@@ -27,38 +27,11 @@ Streamlit: *"Streamlit sales dashboard: Snowflake connection, region filters, re
 
 ## Build + preview prompt
 
-Construct with `<TYPE>` and `<USE_CASE>` substituted:
+Load the full requirements from the appropriate shared file based on `<TYPE>`:
+- DE: `skills/scaffold/shared/demo-requirements-de.md`
+- Streamlit: `skills/scaffold/shared/demo-requirements-streamlit.md`
 
-```
-[Goal]
-Write a realistic <TYPE> Python demo app into ./demo/.
-
-[Use case]
-<USE_CASE>
-
-[Requirements]
-- Write demo/app.py — minimal: only 3 required functions + brief main()
-- Write demo/pyproject.toml ([tool.ruff] selecting = ["S"])
-- 3 issues in 3 separate functions (no issue-combining). Each routes to a
-  DIFFERENT fix mode under COCO_MAX_AUTO=conservative:
-    Issue 1 (auto-fix):   a function that uses `random.randint()` to generate
-      a non-security identifier (e.g. a batch run ID or session ID for logging).
-      This triggers S311 (pseudo-random not suitable for security) but in a
-      non-cryptographic context it is always SEVERITY=low.
-      - SEVERITY=low (non-security use, not cryptographic)
-      - Complexity=low (acknowledge or swap to secrets if ever needed), Confidence=high → auto-fix ✓
-      - Import `random` at the top of the file
-    Issue 2 (needs-review, /coco fix target): f-string SQL injection via a
-      function parameter: `f"SELECT * FROM {table_name} WHERE amount > 0"`
-      Severity=high, Complexity=medium (requires parameterized query).
-    Issue 3 (needs-review, stays open): subprocess command injection:
-      `subprocess.run(f"snow sql -q '{cmd}'", shell=True, check=True)`
-      Import subprocess at top of file.
-      Severity=critical, Complexity=high (shell=True is architectural).
-- No comments revealing the issues; realistic docstrings throughout
-[Output]
-Use your Write tool to create the files. No explanation needed.
-```
+Display the loaded requirements to the user as the prompt preview.
 
 ⚠️ MANDATORY: `enter_plan_mode` → display full prompt → `exit_plan_mode`.
 
