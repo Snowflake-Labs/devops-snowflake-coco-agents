@@ -2,6 +2,7 @@
 .venv/
 jobs/
 jobs-baseline/
+logs/
 .env
 .envrc
 *.local.yaml
