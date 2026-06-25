@@ -1,0 +1,28 @@
+# https://taskfile.dev
+version: "3"
+
+tasks:
+    docs:serve:
+        desc: Preview docs locally at http://localhost:8000 (live-reload)
+        cmds:
+            - uv run --group docs mkdocs serve
+
+    docs:build:
+        desc: Build static docs site to site/
+        cmds:
+            - uv run --group docs mkdocs build
+
+    docs:deploy:
+        desc: Deploy docs to GitHub Pages (gh-pages branch)
+        cmds:
+            - uv run --group docs mkdocs gh-deploy --force
+
+    install:
+        desc: Install all dev + docs dependencies via uv
+        cmds:
+            - uv sync --group docs --group dev
+
+    lint:
+        desc: Lint Python scripts with ruff
+        cmds:
+            - uv run ruff check scripts/

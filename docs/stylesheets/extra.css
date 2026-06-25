@@ -1,0 +1,20 @@
+/* Snowflake brand blue #29B5E8 — applied to both light and dark schemes */
+[data-md-color-primary="custom"] {
+    --md-primary-fg-color: #29B5E8;
+    --md-primary-fg-color--light: #5CCBF0;
+    --md-primary-fg-color--dark: #1A8CB0;
+    --md-primary-bg-color: #ffffff;
+    --md-primary-bg-color--light: #ffffff;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+    --md-primary-fg-color: #29B5E8;
+    --md-primary-bg-color: #0d1117;
+}
+
+/* force logo white on the primary-colored header bar in both modes
+   filter works for both <img src=".svg"> and inline <svg> */
+.md-header .md-logo img,
+.md-header .md-logo svg {
+    filter: brightness(0) invert(1);
+}

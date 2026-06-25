@@ -1,0 +1,12 @@
+version = "1.0"
+
+[metadata]
+name = "smoke-test-streamlit"
+description = "Verify Streamlit demo generation routes 3 issues to 3 distinct fix modes"
+tags = ["devops-coco-agents", "smoke-test", "determinism"]
+epochs = 5
+idd_threshold = 0.6
+
+[agent]
+timeout_sec = 300
+max_turns = 20

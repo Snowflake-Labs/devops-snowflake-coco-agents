@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--unsafe] # allows !!python/name: tags used by mkdocs.yml
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.45.0
+    hooks:
+      - id: markdownlint
+        args: [--config, .markdownlint.yml]
+        files: ^(README|AGENTS|CLAUDE)\.md$
+
+  - repo: local
+    hooks:
+      - id: skill-line-counts
+        name: Skill guidelines (line counts + no inline SKILL_DIR)
+        language: python
+        entry: python3 scripts/check_skill_guidelines.py
+        files: ^skills/scaffold/
+        pass_filenames: false
+
+      - id: skill-llm-audit
+        name: Skill guidelines (LLM audit via skill-development)
+        language: script
+        entry: scripts/audit-skill.sh
+        files: ^skills/scaffold/.*\.md$
+        pass_filenames: false
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.10
+    hooks:
+      - id: ruff
+        name: Ruff lint (scripts)
+        args: [--fix]
+        files: ^(scripts/|skills/scaffold/scripts/).*\.py$
+      - id: ruff-format
+        name: Ruff format (scripts)
+        files: ^(scripts/|skills/scaffold/scripts/).*\.py$

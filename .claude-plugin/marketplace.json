@@ -1,0 +1,29 @@
+{
+    "name": "devops-coco-agents",
+    "owner": {
+        "name": "Snowflake"
+    },
+    "description": "CoCo agent scaffolding tools for GitHub Actions and GitLab CI",
+    "plugins": [
+        {
+            "name": "devops-coco-agents",
+            "source": {
+                "source": "github",
+                "repo": "Snowflake-Labs/devops-snowflake-coco-agents"
+            },
+            "description": "Scaffold and run the CoCo scan->issue->fix agent loop on GitHub Actions or GitLab CI",
+            "category": "devops",
+            "tags": [
+                "snowflake",
+                "cicd",
+                "github",
+                "gitlab",
+                "scaffold",
+                "cortex",
+                "agent"
+            ],
+            "license": "Apache-2.0",
+            "homepage": "https://github.com/Snowflake-Labs/devops-snowflake-coco-agents"
+        }
+    ]
+}

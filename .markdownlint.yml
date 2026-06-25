@@ -1,0 +1,15 @@
+---
+# Markdown best practices reference:
+# https://www.markdownguide.org/basic-syntax/
+# https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+
+default: true
+
+MD013: # line-length
+    line_length: 120
+    code_blocks: false # don't check code blocks (shell commands can be long)
+    tables: false # don't check table rows
+
+MD033: false # allow inline HTML (for badges etc.)
+MD041: false # first line needn't be a top-level heading in all files
+MD060: false # table column alignment — too strict for mixed-width content
