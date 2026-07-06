@@ -21,6 +21,10 @@ For the CI pipeline bot token (`GITLAB_TOKEN_COCO`), the skill offers two paths:
 - **Use glab auth token** — convenient for development; pipeline loses access if you log out
 - **Use a dedicated PAT** — recommended for long-lived or shared projects (`api + write_repository` scopes)
 
+The CI pipeline uses two GitLab CI components from `snowflake-dev/snowflake-cicd-component`:
+`configure-snowflake-cli` (OIDC + snow CLI) and `configure-cortex-code` (Cortex Code CLI + `connections.toml`).
+Both use `template-only: true` so jobs extend them via `extends:`.
+
 ## The 6 steps
 
 ### Step 1 — Create Project

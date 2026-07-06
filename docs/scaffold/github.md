@@ -54,4 +54,4 @@ Tears down everything in dependency order: disable Actions — drop Snowflake ob
 
 ## Authentication
 
-The CI pipeline uses Workload Identity Federation. The `snowflake-actions@v3` handles OIDC token exchange automatically.
+The CI pipeline uses Workload Identity Federation. The combined `snowflakedb/snowflake-actions@v3` action (with `cortex-code: true`) handles OIDC token exchange, CLI installation, and `connections.toml` generation in a single step.

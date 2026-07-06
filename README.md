@@ -123,7 +123,7 @@ task docs:serve   # http://localhost:8000
 
 | Platform | Template | Auth |
 |----------|----------|------|
-| GitHub Actions | [Snowflake-Labs/github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) | OIDC via [snowflake-cli-action](https://github.com/snowflakedb/snowflake-cli-action) |
+| GitHub Actions | [Snowflake-Labs/github-coco-agent](https://github.com/Snowflake-Labs/github-coco-agent) | OIDC via [snowflake-actions](https://github.com/snowflakedb/snowflake-actions) |
 | GitLab CI | [snowflake-dev/gitlab-coco-agent](https://gitlab.com/snowflake-dev/gitlab-coco-agent) | OIDC via [snowflake-cicd-component](https://gitlab.com/snowflake-dev/snowflake-cicd-component) |
 
 ---
