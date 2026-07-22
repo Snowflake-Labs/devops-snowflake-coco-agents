@@ -7,11 +7,7 @@ Install CoCo before proceeding:
 
 - [Cortex Code — official docs](https://docs.snowflake.com/en/user-guide/cortex-code/cortex-code)
 
-!!! important "Beta channel required"
-    The scaffold skill and template workflows require Cortex Code (CoCo)
-    **beta channel** (verify with `cortex --version`).
-
-Once CoCo is running and connected to Snowflake, continue below.
+Once CoCo is running (v1.1.41+) and connected to Snowflake, continue below.
 
 ## Install the plugin
 
