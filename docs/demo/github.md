@@ -70,7 +70,9 @@ CoCo provisions three Snowflake objects:
 | Warehouse | `DEMO_GH_NIMBLE_PROXY_COCO_AGENT_WH` (XS, auto-suspend 60s) |
 | User | `DEMO_GH_NIMBLE_PROXY_COCO_AGENT_USER` (TYPE = SERVICE) |
 
-OIDC trust is bound to `repo:youruser/nimble-proxy:ref:refs/heads/main`.
+OIDC trust is bound to the subject GitHub reports for the repo. A new repo gets the
+immutable form, e.g. `repo:youruser@123456/nimble-proxy@456789:ref:refs/heads/main`.
+CoCo pre-fills it, and you accept it or edit it.
 No password is stored — GitHub issues a short-lived token that Snowflake verifies directly.
 
 **Verify:**

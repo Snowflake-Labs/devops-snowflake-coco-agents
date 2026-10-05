@@ -28,6 +28,7 @@ step_6 = "NOT_STARTED"
 user      = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_USER"
 role      = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_ROLE"
 warehouse = "DEMO_GH_NIMBLE_PROXY_COCO_AGENT_WH"
+oidc_subject = "repo:youruser@123456/nimble-proxy@456789:ref:refs/heads/main"
 
 ## Step states
 

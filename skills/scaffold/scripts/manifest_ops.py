@@ -32,6 +32,7 @@ Schema (both GitHub and GitLab, identical structure):
     user      = "YOURPREFIX_GH_MY_REPO_COCO_AGENT_USER"
     role      = "YOURPREFIX_GH_MY_REPO_COCO_AGENT_ROLE"
     warehouse = "YOURPREFIX_GH_MY_REPO_COCO_AGENT_WH"
+    oidc_subject = "repo:org@123/repo-name@456:ref:refs/heads/main"
 
     [runner]
     installed  = false
@@ -55,6 +56,7 @@ Commands:
     step-start     Mark a step IN_PROGRESS with started_at timestamp
     step-complete  Mark a step COMPLETE with completed_at timestamp
     fill-snowflake Fill [snowflake] section with derived object names
+    fill-oidc      Record the confirmed OIDC subject in [snowflake]
     fill-runner    Fill [runner] pid and runner_id after nohup launch
     read           Read a single dotted-path value from the manifest
     summary        Print a step progress table (used for resume detection)
@@ -102,7 +104,7 @@ _PROJECT_KEYS = [
     "created_at",
 ]
 
-_SNOWFLAKE_KEYS = ["user", "role", "warehouse"]
+_SNOWFLAKE_KEYS = ["user", "role", "warehouse", "oidc_subject"]
 
 _RUNNER_KEYS = ["installed", "pid", "runner_id"]
 
@@ -278,7 +280,7 @@ def _fresh_manifest(
             "run_mode": run_mode,
             "created_at": now,
         },
-        "snowflake": {"user": "", "role": "", "warehouse": ""},
+        "snowflake": {"user": "", "role": "", "warehouse": "", "oidc_subject": ""},
         "runner": {"installed": False, "pid": 0, "runner_id": ""},
         "steps": _blank_steps(),
     }
@@ -384,13 +386,31 @@ def cmd_fill_snowflake(args: argparse.Namespace) -> int:
     suffix = "GH" if args.platform == "github" else "GL"
     p = args.prefix.upper()
     r = re.sub(r"[^A-Z0-9]", "_", args.repo_name.upper())
-    data["snowflake"] = {
-        "user": f"{p}_{suffix}_{r}_COCO_AGENT_USER",
-        "role": f"{p}_{suffix}_{r}_COCO_AGENT_ROLE",
-        "warehouse": f"{p}_{suffix}_{r}_COCO_AGENT_WH",
-    }
+    # update() rather than replace so a re-run keeps oidc_subject
+    data.setdefault("snowflake", {}).update(
+        {
+            "user": f"{p}_{suffix}_{r}_COCO_AGENT_USER",
+            "role": f"{p}_{suffix}_{r}_COCO_AGENT_ROLE",
+            "warehouse": f"{p}_{suffix}_{r}_COCO_AGENT_WH",
+        }
+    )
     save_manifest(args.manifest, data)
     print(f"✓ [snowflake] filled with {p}_{suffix}_{r}_COCO_AGENT_* names")
+    return 0
+
+
+def cmd_fill_oidc(args: argparse.Namespace) -> int:
+    data = load_manifest(args.manifest)
+    if not data:
+        print(f"Error: manifest not found: {args.manifest}", file=sys.stderr)
+        return 1
+    subject = args.subject.strip()
+    if not subject:
+        print("Error: --subject must not be empty", file=sys.stderr)
+        return 1
+    data.setdefault("snowflake", {})["oidc_subject"] = subject
+    save_manifest(args.manifest, data)
+    print(f"✓ [snowflake] oidc_subject = {subject}")
     return 0
 
 
@@ -527,6 +547,11 @@ def _build_parser() -> argparse.ArgumentParser:
     pfs.add_argument("--repo-name", required=True)
     pfs.add_argument("--platform", required=True, choices=["github", "gitlab"])
 
+    # fill-oidc
+    pfo = sub.add_parser("fill-oidc", help="Record the confirmed OIDC subject")
+    pfo.add_argument("--manifest", required=True)
+    pfo.add_argument("--subject", required=True)
+
     # fill-runner
     pfr = sub.add_parser("fill-runner", help="Fill [runner] pid and runner_id")
     pfr.add_argument("--manifest", required=True)
@@ -560,6 +585,7 @@ def main() -> int:
         "step-start": cmd_step_start,
         "step-complete": cmd_step_complete,
         "fill-snowflake": cmd_fill_snowflake,
+        "fill-oidc": cmd_fill_oidc,
         "fill-runner": cmd_fill_runner,
         "read": cmd_read,
         "summary": cmd_summary,
