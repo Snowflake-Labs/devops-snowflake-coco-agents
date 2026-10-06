@@ -33,6 +33,9 @@ If empty or error: ⚠️ Complete Step 3 first.
 ```bash
 # Re-enable Actions (was disabled in step 2)
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": true}'
+# Allow Actions to create PRs (required by cortex-fix.yml)
+gh api "repos/$REPO_PATH/actions/permissions/workflow" -X PUT \
+  --input - <<<'{"default_workflow_permissions": "write", "can_approve_pull_request_reviews": true}'
 
 # Branch protection — check first (brownfield repos may already have rules)
 EXISTING=$(gh api "repos/$REPO_PATH/branches/main/protection" 2>/dev/null)
@@ -54,7 +57,7 @@ echo "✓ Quick start complete. Push code to $REPO_PATH to trigger the scan+fix 
 
 ### Full setup path (`SETUP_MODE = "full"`)
 
-Re-enable Actions and apply branch protection (same as quick start), then ask:
+Run the quick-start block (Actions, PR permissions, branch protection), then ask:
 
 ```
 ask_user_question:
