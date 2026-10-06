@@ -7,9 +7,14 @@
 
 ```bash
 gh api "repos/$REPO_PATH/actions/permissions" -X PUT --input - <<<'{"enabled": true}'
+
+# Allow Actions to create PRs (required by cortex-fix.yml)
+gh api "repos/$REPO_PATH/actions/permissions/workflow" -X PUT \
+  --input - <<<'{"default_workflow_permissions": "write", "can_approve_pull_request_reviews": true}'
 ```
 
-**Verify:** `gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled` → `true`.
+**Verify:** `gh api "repos/$REPO_PATH/actions/permissions" --jq .enabled` → `true`, and
+`gh api "repos/$REPO_PATH/actions/permissions/workflow" --jq .can_approve_pull_request_reviews` → `true`.
 
 ```bash
 REPO_OR_PROJECT_NAME="$REPO_NAME"
