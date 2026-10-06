@@ -33,9 +33,18 @@ CREATE USER IF NOT EXISTS $SF_USER TYPE = SERVICE;
 ALTER USER $SF_USER SET WORKLOAD_IDENTITY = (
   TYPE    = OIDC
   ISSUER  = 'https://token.actions.githubusercontent.com'
-  SUBJECT = 'repo:$REPO_PATH:ref:refs/heads/main'
+  SUBJECT = '$OIDC_SUBJECT'
 );
 ```
+
+`$OIDC_SUBJECT` is read from the repo's GitHub OIDC settings
+(`gh api repos/$REPO_PATH/actions/oidc/customization/sub`) and shown pre-filled for
+you to accept or edit. Repos created, renamed, or transferred after 2026-07-15 use
+GitHub's [immutable subject format](https://github.blog/changelog/2026-04-23-immutable-subject-claims-for-github-actions-oidc-tokens/),
+`repo:<owner>@<owner_id>/<repo>@<repo_id>:ref:refs/heads/main`. Older repos keep
+`repo:<owner>/<repo>:ref:refs/heads/main` unless they opt in. If the settings can't
+be read, the skill builds the immutable form from the repo and owner IDs and marks
+it as unverified.
 
 ### Step 4 — Configure
 

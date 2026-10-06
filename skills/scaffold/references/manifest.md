@@ -79,6 +79,7 @@ created_at = "2026-06-13T10:00:00Z"
 user      = ""   # filled by: manifest_ops.py fill-snowflake
 role      = ""
 warehouse = ""
+oidc_subject = ""   # filled by: manifest_ops.py fill-oidc (subject confirmed in Step 2)
 
 [steps.step_1]
 label        = "Create Project"
@@ -156,6 +157,16 @@ python3 "$MANIFEST_OPS" fill-snowflake \
   --prefix   "$PREFIX" \
   --platform "github"
 # Writes: ${PREFIX}_GH_${REPO_NAME_NORM}_COCO_AGENT_USER / _ROLE / _WH
+# Existing keys (e.g. oidc_subject) are preserved
+```
+
+### fill-oidc — record the OIDC subject the user confirmed
+
+```bash
+python3 "$MANIFEST_OPS" fill-oidc \
+  --manifest "$MANIFEST" \
+  --subject  "$OIDC_SUBJECT"
+# Writes: snowflake.oidc_subject
 ```
 
 ### read — read a single value (for teardown variable loading)
